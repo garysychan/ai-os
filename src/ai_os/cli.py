@@ -13,6 +13,7 @@ from ai_os.governance import (
     ConsistencyReport,
     ControlPlane,
     ControlPlaneError,
+    MissingControlPlaneFileError,
     load_control_plane,
     run_consistency_checks,
 )
@@ -139,15 +140,33 @@ def _print_human_report(
                 print(f"  Remediation: {finding.remediation}")
 
 
-def _failure_payload(root: Path, error: ControlPlaneError) -> dict[str, str]:
+def _failure_payload(root: Path, error: ControlPlaneError) -> dict[str, Any]:
+    check_id = (
+        "CP-C01"
+        if isinstance(error, MissingControlPlaneFileError)
+        else "CP-C02"
+    )
+    finding = {
+        "check_id": check_id,
+        "severity": "FAIL",
+        "document": "CONTROL_PLANE",
+        "subject": None,
+        "message": str(error),
+        "evidence": type(error).__name__,
+        "remediation": "Correct the input documents and rerun bootstrap",
+    }
     return {
         "operation": "CONTROL PLANE CONSISTENCY CHECK",
         "root": str(root.expanduser().resolve()),
         "status": "FAIL",
         "error_type": type(error).__name__,
         "error": str(error),
+        "consistency": {
+            "status": "FAIL",
+            "checks": [f"CP-C{number:02d}" for number in range(1, 11)],
+            "findings": [finding],
+        },
     }
-
 
 def _run_load(
     root: Path,
