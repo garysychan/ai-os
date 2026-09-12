@@ -1,5 +1,6 @@
 """Control Plane loading, validation and governance services."""
 
+from .checker import run_consistency_checks
 from .errors import (
     ControlPlaneError,
     ControlPlaneParseError,
@@ -16,6 +17,7 @@ from .loader import (
     parse_workflow,
     validate_required_files,
 )
+from .findings import ConsistencyReport, Finding, Severity
 from .models import (
     AgentDefinition,
     AuthorityEntry,
@@ -31,14 +33,18 @@ __all__ = [
     "AgentDefinition",
     "AuthorityEntry",
     "ControlPlane",
+    "ConsistencyReport",
     "ControlPlaneError",
+    "Finding",
     "ControlPlaneParseError",
     "MissingControlPlaneFileError",
     "RuleDefinition",
+    "Severity",
     "TaskDefinition",
     "WorkflowDefinition",
     "build_authority_map",
     "load_control_plane",
+    "run_consistency_checks",
     "parse_agent_definitions",
     "parse_rules",
     "parse_tasks",
