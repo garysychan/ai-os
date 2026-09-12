@@ -7,13 +7,13 @@ from collections.abc import Mapping
 
 from .findings import Finding, Severity
 
-_SEMVER_RE = re.compile(r"^(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)$")
+_SEMVER_RE = re.compile(r"^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$")
 _CONTROL_VERSION_RE = re.compile(
-    r"^\\s*(?:>\\s*)?Control Plane Version:\\s*([0-9]+\\.[0-9]+\\.[0-9]+)\\s*$",
+    r"^\s*(?:>\s*)?Control Plane Version:\s*([0-9]+\.[0-9]+\.[0-9]+)\s*$",
     re.MULTILINE | re.IGNORECASE,
 )
 _VERSION_RE = re.compile(
-    r"^\\s*(?:>\\s*)?Version:\\s*([0-9]+\\.[0-9]+\\.[0-9]+)\\s*$",
+    r"^\s*(?:>\s*)?Version:\s*([0-9]+\.[0-9]+\.[0-9]+)\s*$",
     re.MULTILINE | re.IGNORECASE,
 )
 
