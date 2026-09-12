@@ -560,24 +560,3 @@ def _check_orphans(control_plane: ControlPlane) -> list[Finding]:
             )
         )
     return findings
-
-def _check_orphans(control_plane: ControlPlane) -> list[Finding]:
-    findings: list[Finding] = []
-    authoritative = {
-        entry.document for entry in control_plane.authority_map.values()
-    }
-    for document in REQUIRED_FILES:
-        if document == "CONTROL_PLANE.md":
-            continue
-        if document not in authoritative:
-            findings.append(
-                _finding(
-                    "CP-C10",
-                    Severity.WARNING,
-                    "CONTROL_PLANE.md",
-                    "Controlled document has no authority-map designation",
-                    subject=document,
-                    remediation="Add the document to the Authority Model",
-                )
-            )
-    return findings
