@@ -83,7 +83,10 @@ def _check_required_files(control_plane: ControlPlane) -> list[Finding]:
 
 
 def _check_references(control_plane: ControlPlane) -> list[Finding]:
-    findings = check_document_references(control_plane.documents)
+    findings = check_document_references(
+        control_plane.documents,
+        control_plane.root,
+    )
     known_agents = {name.casefold() for name in control_plane.agents}
     workflow = control_plane.documents["WORKFLOW.md"]
 
