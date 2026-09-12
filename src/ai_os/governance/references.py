@@ -8,7 +8,7 @@ from collections.abc import Mapping
 from .findings import Finding, Severity
 
 _MARKDOWN_REFERENCE_RE = re.compile(
-    r"(?<![A-Za-z0-9_./-])([A-Z][A-Z0-9_/-]*\\.md)\\b"
+    r"(?<![A-Za-z0-9_./-])([A-Z][A-Z0-9_/-]*\.md)\b"
 )
 
 
