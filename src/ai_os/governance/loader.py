@@ -254,7 +254,7 @@ def build_authority_map(
     markdown: str,
 ) -> dict[str, AuthorityEntry]:
     """Build domain-to-document mappings from CONTROL_PLANE.md."""
-    section = _section(markdown, "Authority Model", level=2)
+    section = _section(markdown, "Authority Model")
     authority: dict[str, AuthorityEntry] = {}
 
     for line in section.splitlines():
@@ -348,7 +348,16 @@ def _headings(markdown: str, level: int) -> Iterable[str]:
             yield match.group(2).strip()
 
 
-def _section(markdown: str, title: str, level: int) -> str:
+def _section(
+    markdown: str,
+    title: str,
+    level: int | None = None,
+) -> str:
+    """Return a named Markdown section.
+
+    When ``level`` is omitted, the title may occur at any heading level and
+    the section boundary is derived from the matched heading itself.
+    """
     headings = list(_HEADING_RE.finditer(markdown))
     wanted = title.casefold()
 
@@ -360,20 +369,21 @@ def _section(markdown: str, title: str, level: int) -> str:
             match.group(2),
         ).strip()
         if (
-            heading_level != level
+            (level is not None and heading_level != level)
             or heading_title.casefold() != wanted
         ):
             continue
 
         end = len(markdown)
         for later in headings[index + 1 :]:
-            if len(later.group(1)) <= level:
+            if len(later.group(1)) <= heading_level:
                 end = later.start()
                 break
         return markdown[match.end() : end]
 
+    level_description = f"level-{level} " if level is not None else ""
     raise ControlPlaneParseError(
-        f"Missing level-{level} section: {title}"
+        f"Missing {level_description}section: {title}"
     )
 
 
