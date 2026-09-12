@@ -13,9 +13,9 @@ from .references import check_document_references
 from .versions import check_versions
 
 Check = Callable[[ControlPlane], list[Finding]]
-_RULE_ID_RE = re.compile(r"\\b(RULE-[A-Z]+-\\d+)\\b")
+_RULE_ID_RE = re.compile(r"\b(RULE-[A-Z]+-\d+)\b")
 _RESPONSIBLE_RE = re.compile(
-    r"^Responsible:\\s*(.+?)\\s*$",
+    r"^Responsible:\s*(.+?)\s*$",
     re.MULTILINE | re.IGNORECASE,
 )
 
@@ -88,7 +88,7 @@ def _check_references(control_plane: ControlPlane) -> list[Finding]:
     workflow = control_plane.documents["WORKFLOW.md"]
 
     for value in _RESPONSIBLE_RE.findall(workflow):
-        for candidate in re.split(r"\\s*/\\s*", value):
+        for candidate in re.split(r"\s*/\s*", value):
             name = candidate.strip()
             if (
                 not name
@@ -222,7 +222,7 @@ def _check_rules(control_plane: ControlPlane) -> list[Finding]:
 
     by_text: dict[str, str] = {}
     for rule in control_plane.rules.values():
-        normalized = re.sub(r"\\W+", " ", rule.text).strip().casefold()
+        normalized = re.sub(r"\W+", " ", rule.text).strip().casefold()
         previous = by_text.get(normalized)
         if previous and previous != rule.rule_id:
             findings.append(
