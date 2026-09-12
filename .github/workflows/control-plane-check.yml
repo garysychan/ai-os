@@ -1,0 +1,96 @@
+name: Control Plane Check
+
+on:
+  push:
+    branches:
+      - main
+      - feature/executable-ai-os-v2
+    paths:
+      - "CONTROL_PLANE.md"
+      - "AGENTS.md"
+      - "PROJECT_RULES.md"
+      - "ARCHITECTURE.md"
+      - "WORKFLOW.md"
+      - "TASKS.md"
+      - "pyproject.toml"
+      - "src/**"
+      - "tests/**"
+      - "scripts/control_plane_check.py"
+      - ".github/workflows/control-plane-check.yml"
+  pull_request:
+    paths:
+      - "CONTROL_PLANE.md"
+      - "AGENTS.md"
+      - "PROJECT_RULES.md"
+      - "ARCHITECTURE.md"
+      - "WORKFLOW.md"
+      - "TASKS.md"
+      - "pyproject.toml"
+      - "src/**"
+      - "tests/**"
+      - "scripts/control_plane_check.py"
+      - ".github/workflows/control-plane-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: control-plane-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.11"
+          - "3.12"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Upgrade packaging tools
+        run: python -m pip install --upgrade pip setuptools wheel
+
+      - name: Install AI OS
+        run: python -m pip install --editable .
+
+      - name: Compile Python sources
+        run: python -m compileall -q src scripts tests
+
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Bootstrap Control Plane
+        run: aios bootstrap --root .
+
+      - name: Run Control Plane Consistency Check
+        run: aios control-plane check --root .
+
+      - name: Save machine-readable status
+        if: always()
+        run: |
+          mkdir -p artifacts
+          aios control-plane check --root . --json > artifacts/control-plane-status.json
+
+      - name: Upload Control Plane status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: control-plane-status-python-${{ matrix.python-version }}
+          path: artifacts/control-plane-status.json
+          if-no-files-found: error
+          retention-days: 14
