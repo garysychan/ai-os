@@ -7,7 +7,7 @@ from collections.abc import Mapping
 
 from .findings import Finding, Severity
 
-_TABLE_ROW_RE = re.compile(r"^\\|(.+)\\|\\s*$")
+_TABLE_ROW_RE = re.compile(r"^\|(.+)\|\s*$")
 _TRUE_VALUES = {"yes", "true", "allowed", "allow"}
 
 
@@ -18,7 +18,7 @@ def _rows(markdown: str) -> list[list[str]]:
         if not match:
             continue
         cells = [
-            re.sub(r"[\\x60*]", "", cell).strip()
+            re.sub(r"[\x60*]", "", cell).strip()
             for cell in match.group(1).split("|")
         ]
         if cells and not all(set(cell) <= {"-", ":"} for cell in cells):
