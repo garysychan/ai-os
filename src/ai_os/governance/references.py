@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
+from pathlib import Path
 
 from .findings import Finding, Severity
 
@@ -14,15 +15,18 @@ _MARKDOWN_REFERENCE_RE = re.compile(
 
 def check_document_references(
     documents: Mapping[str, str],
+    root: Path,
 ) -> list[Finding]:
-    """Return CP-C02 findings for referenced Markdown documents."""
+    """Return CP-C02 findings for Markdown paths missing from the repository."""
     findings: list[Finding] = []
     known = set(documents)
 
     for source, markdown in documents.items():
         for reference in sorted(set(_MARKDOWN_REFERENCE_RE.findall(markdown))):
             basename = reference.rsplit("/", 1)[-1]
-            if basename in known:
+            candidate = (root / reference).resolve()
+            in_repository = candidate == root or root in candidate.parents
+            if basename in known or (in_repository and candidate.is_file()):
                 continue
             findings.append(
                 Finding(
