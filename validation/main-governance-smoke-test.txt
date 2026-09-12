@@ -1,0 +1,4 @@
+CR-2026-004 main-governance smoke test
+
+This file intentionally lives outside the former Control Plane workflow path filters.
+The test Pull Request will be closed without merging after required checks are verified.
