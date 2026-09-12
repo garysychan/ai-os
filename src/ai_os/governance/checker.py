@@ -10,6 +10,7 @@ from .loader import REQUIRED_FILES, VALID_TASK_STATES
 from .models import ControlPlane
 from .permissions import check_permissions
 from .references import check_document_references
+from .transitions import ALLOWED_TRANSITIONS, is_valid_transition
 from .versions import check_versions
 
 Check = Callable[[ControlPlane], list[Finding]]
@@ -115,6 +116,8 @@ def _check_references(control_plane: ControlPlane) -> list[Finding]:
 
 def _check_agents(control_plane: ControlPlane) -> list[Finding]:
     findings: list[Finding] = []
+    responsibility_owners: dict[str, list[str]] = {}
+
     for agent in control_plane.agents.values():
         if not agent.responsibilities:
             findings.append(
@@ -127,8 +130,60 @@ def _check_agents(control_plane: ControlPlane) -> list[Finding]:
                     remediation="Add a Responsibilities list",
                 )
             )
-    return findings
+        for responsibility in agent.responsibilities:
+            normalized = re.sub(
+                r"\W+", " ", responsibility
+            ).strip().casefold()
+            responsibility_owners.setdefault(normalized, []).append(agent.name)
 
+    for responsibility, owners in responsibility_owners.items():
+        if responsibility and len(owners) > 1:
+            findings.append(
+                _finding(
+                    "CP-C03",
+                    Severity.WARNING,
+                    "AGENTS.md",
+                    "Responsibility is assigned identically to multiple Agents",
+                    subject=", ".join(sorted(owners)),
+                    evidence=responsibility,
+                    remediation="Clarify ownership or explicitly document shared responsibility",
+                )
+            )
+
+    permission_markdown = control_plane.documents["AGENTS.md"]
+    table_agents = {
+        name.casefold()
+        for name in re.findall(
+            r"^\|\s*([A-Za-z][A-Za-z ]+?)\s*\|",
+            permission_markdown,
+            re.MULTILINE,
+        )
+        if name.casefold() not in {"agent", "actor"}
+    }
+    defined_agents = {name.casefold() for name in control_plane.agents}
+    for name in sorted(table_agents - defined_agents):
+        findings.append(
+            _finding(
+                "CP-C03",
+                Severity.FAIL,
+                "AGENTS.md",
+                "Permission table references an undefined Agent",
+                subject=name,
+                remediation="Define the Agent or remove the permission row",
+            )
+        )
+    for name in sorted(defined_agents - table_agents):
+        findings.append(
+            _finding(
+                "CP-C03",
+                Severity.WARNING,
+                "AGENTS.md",
+                "Defined Agent has no permission-table row",
+                subject=name,
+                remediation="Declare explicit permissions for the Agent",
+            )
+        )
+    return findings
 
 def _check_workflow(control_plane: ControlPlane) -> list[Finding]:
     findings: list[Finding] = []
@@ -158,6 +213,17 @@ def _check_workflow(control_plane: ControlPlane) -> list[Finding]:
                         remediation="Define the state or remove the transition",
                     )
                 )
+        if not is_valid_transition(source, target):
+            findings.append(
+                _finding(
+                    "CP-C04",
+                    Severity.FAIL,
+                    "WORKFLOW.md",
+                    "Transition violates the executable transition policy",
+                    subject=f"{source} -> {target}",
+                    remediation="Use an allowed transition or approve a policy change",
+                )
+            )
     if not workflow.transitions:
         findings.append(
             _finding(
@@ -165,7 +231,11 @@ def _check_workflow(control_plane: ControlPlane) -> list[Finding]:
                 Severity.WARNING,
                 "WORKFLOW.md",
                 "No explicit state transitions were parsed",
-                remediation="Declare executable state transitions",
+                evidence=", ".join(
+                    f"{source}->{target}"
+                    for source, target in sorted(ALLOWED_TRANSITIONS)
+                ),
+                remediation="Declare executable transitions in WORKFLOW.md",
             )
         )
     if not workflow.stages:
@@ -180,9 +250,9 @@ def _check_workflow(control_plane: ControlPlane) -> list[Finding]:
         )
     return findings
 
-
 def _check_architecture(control_plane: ControlPlane) -> list[Finding]:
-    architecture = control_plane.documents["ARCHITECTURE.md"].casefold()
+    markdown = control_plane.documents["ARCHITECTURE.md"]
+    architecture = markdown.casefold()
     findings: list[Finding] = []
     required_concepts = {
         "control plane": "Document the Control Plane boundary",
@@ -202,8 +272,55 @@ def _check_architecture(control_plane: ControlPlane) -> list[Finding]:
                     remediation=remediation,
                 )
             )
-    return findings
 
+    architecture_states = set(
+        re.findall(
+            r"\b(TODO|IN_PROGRESS|BLOCKED|REVIEW|DONE)\b",
+            markdown,
+        )
+    )
+    if architecture_states and architecture_states != set(
+        control_plane.workflow.states
+    ):
+        findings.append(
+            _finding(
+                "CP-C05",
+                Severity.FAIL,
+                "ARCHITECTURE.md",
+                "Architecture and Workflow define different task states",
+                evidence=(
+                    f"architecture={sorted(architecture_states)}; "
+                    f"workflow={sorted(control_plane.workflow.states)}"
+                ),
+                remediation="Reconcile ARCHITECTURE.md with WORKFLOW.md",
+            )
+        )
+
+    architecture_agents = {
+        name
+        for name in control_plane.agents
+        if re.search(rf"\b{re.escape(name)}\b", markdown)
+    }
+    workflow_agents = {
+        name
+        for name in control_plane.agents
+        if re.search(
+            rf"\b{re.escape(name)}\b",
+            control_plane.documents["WORKFLOW.md"],
+        )
+    }
+    for name in sorted(workflow_agents - architecture_agents):
+        findings.append(
+            _finding(
+                "CP-C05",
+                Severity.WARNING,
+                "ARCHITECTURE.md",
+                "Workflow Agent is absent from the logical architecture",
+                subject=name,
+                remediation="Document the Agent or revise the workflow assignment",
+            )
+        )
+    return findings
 
 def _check_rules(control_plane: ControlPlane) -> list[Finding]:
     markdown = control_plane.documents["PROJECT_RULES.md"]
@@ -224,6 +341,8 @@ def _check_rules(control_plane: ControlPlane) -> list[Finding]:
         seen.add(rule_id)
 
     by_text: dict[str, str] = {}
+    polarity: dict[str, tuple[str, bool]] = {}
+    negation = re.compile(r"\b(?:not|never|cannot|must not|do not)\b")
     for rule in control_plane.rules.values():
         normalized = re.sub(r"\W+", " ", rule.text).strip().casefold()
         previous = by_text.get(normalized)
@@ -240,8 +359,26 @@ def _check_rules(control_plane: ControlPlane) -> list[Finding]:
                 )
             )
         by_text[normalized] = rule.rule_id
-    return findings
 
+        is_negative = bool(negation.search(normalized))
+        proposition = negation.sub("", normalized)
+        proposition = re.sub(r"\s+", " ", proposition).strip()
+        prior = polarity.get(proposition)
+        if prior and prior[1] != is_negative:
+            findings.append(
+                _finding(
+                    "CP-C06",
+                    Severity.FAIL,
+                    "PROJECT_RULES.md",
+                    "Rules contain opposite structured propositions",
+                    subject=rule.rule_id,
+                    evidence=prior[0],
+                    remediation="Resolve the conflict through Change Control",
+                )
+            )
+        else:
+            polarity[proposition] = (rule.rule_id, is_negative)
+    return findings
 
 def _check_tasks(control_plane: ControlPlane) -> list[Finding]:
     findings: list[Finding] = []
@@ -358,6 +495,71 @@ def _check_permission_model(control_plane: ControlPlane) -> list[Finding]:
 def _check_version_model(control_plane: ControlPlane) -> list[Finding]:
     return check_versions(control_plane.documents)
 
+
+def _check_orphans(control_plane: ControlPlane) -> list[Finding]:
+    findings: list[Finding] = []
+    authoritative = {
+        entry.document for entry in control_plane.authority_map.values()
+    }
+    for document in REQUIRED_FILES:
+        if document == "CONTROL_PLANE.md":
+            continue
+        if document not in authoritative:
+            findings.append(
+                _finding(
+                    "CP-C10",
+                    Severity.WARNING,
+                    "CONTROL_PLANE.md",
+                    "Controlled document has no authority-map designation",
+                    subject=document,
+                    remediation="Add the document to the Authority Model",
+                )
+            )
+
+    referenced_agents = {
+        agent.casefold()
+        for task in control_plane.tasks.values()
+        for agent in task.agents
+    }
+    workflow_markdown = control_plane.documents["WORKFLOW.md"].casefold()
+    for name in sorted(control_plane.agents):
+        if (
+            name.casefold() not in referenced_agents
+            and re.search(rf"\b{re.escape(name.casefold())}\b", workflow_markdown)
+            is None
+        ):
+            findings.append(
+                _finding(
+                    "CP-C10",
+                    Severity.WARNING,
+                    "AGENTS.md",
+                    "Agent is not referenced by Workflow or Tasks",
+                    subject=name,
+                    remediation="Assign the Agent or remove the orphan definition",
+                )
+            )
+
+    used_states = {
+        state
+        for transition in control_plane.workflow.transitions
+        for state in transition
+    } | {
+        task.status
+        for task in control_plane.tasks.values()
+        if task.status is not None
+    }
+    for state in sorted(control_plane.workflow.states - used_states):
+        findings.append(
+            _finding(
+                "CP-C10",
+                Severity.WARNING,
+                "WORKFLOW.md",
+                "Workflow state is not used by a Task or explicit transition",
+                subject=state,
+                remediation="Use the state or document why it is reserved",
+            )
+        )
+    return findings
 
 def _check_orphans(control_plane: ControlPlane) -> list[Finding]:
     findings: list[Finding] = []
