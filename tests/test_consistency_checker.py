@@ -36,6 +36,25 @@ class ConsistencyCheckerTests(unittest.TestCase):
         )
         self.assertNotEqual(report.status, "FAIL")
 
+    def test_existing_repository_document_reference_is_valid(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = self._copy_fixture(directory)
+            (root / "README.md").write_text("# README", encoding="utf-8")
+            architecture = root / "ARCHITECTURE.md"
+            architecture.write_text(
+                architecture.read_text(encoding="utf-8")
+                + "\nSee README.md for usage.\n",
+                encoding="utf-8",
+            )
+            report = run_consistency_checks(load_control_plane(root))
+
+        missing_readme = [
+            finding
+            for finding in report.findings_for("CP-C02")
+            if finding.subject == "README.md"
+        ]
+        self.assertEqual(missing_readme, [])
+
     def test_dependency_cycle_is_blocking(self) -> None:
         with TemporaryDirectory() as directory:
             root = self._copy_fixture(directory)
