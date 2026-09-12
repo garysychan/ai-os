@@ -18,6 +18,7 @@ from .loader import (
     validate_required_files,
 )
 from .findings import ConsistencyReport, Finding, Severity
+from .transitions import ALLOWED_TRANSITIONS, is_valid_transition
 from .models import (
     AgentDefinition,
     AuthorityEntry,
@@ -30,6 +31,7 @@ from .models import (
 __all__ = [
     "REQUIRED_FILES",
     "VALID_TASK_STATES",
+    "ALLOWED_TRANSITIONS",
     "AgentDefinition",
     "AuthorityEntry",
     "ControlPlane",
@@ -43,6 +45,7 @@ __all__ = [
     "TaskDefinition",
     "WorkflowDefinition",
     "build_authority_map",
+    "is_valid_transition",
     "load_control_plane",
     "run_consistency_checks",
     "parse_agent_definitions",
