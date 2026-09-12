@@ -202,21 +202,21 @@ Acceptance Criteria:
 
 Priority: P0  
 Agent: Controller / Developer  
-Status: IN_PROGRESS  
+Status: DONE  
 Dependencies: TASK-0007
 
 Description:
 Require every change to `main` to use a Pull Request and pass the Python 3.11 and Python 3.12 Control Plane checks.
 
 Acceptance Criteria:
-- [ ] Every Pull Request triggers both Control Plane checks.
-- [ ] `Python 3.11` is configured as a required check.
-- [ ] `Python 3.12` is configured as a required check.
-- [ ] Direct updates to `main` require a Pull Request.
-- [ ] Pending or failed required checks block merge.
-- [ ] Force pushes and deletion of `main` are blocked.
-- [ ] The `main-governance` ruleset is Active.
-- [ ] A validation Pull Request confirms enforcement.
+- [x] Every Pull Request triggers both Control Plane checks.
+- [x] `Python 3.11` is configured as a required check.
+- [x] `Python 3.12` is configured as a required check.
+- [x] Direct updates to `main` require a Pull Request.
+- [x] Pending or failed required checks block merge.
+- [x] Force pushes and deletion of `main` are blocked.
+- [x] The `main-governance` ruleset is Active.
+- [x] A validation Pull Request confirms enforcement.
 
 Artifacts:
 - CR-2026-004
@@ -228,7 +228,10 @@ Risks:
 
 Notes:
 - Implementation started after explicit A3 human approval.
-- Ruleset activation remains a Repository Owner operation.
+- Repository Owner activated ruleset `main-governance` (Ruleset ID 23053660).
+- PR #5 verified required-check blocking and universal Pull Request triggering.
+- GitHub Actions Run 34697270854 passed on Python 3.11 and Python 3.12.
+- PR #5 was closed without merging its smoke-test artifact.
 
 ## Task Change Rules
 
