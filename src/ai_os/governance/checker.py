@@ -362,6 +362,11 @@ def _check_rules(control_plane: ControlPlane) -> list[Finding]:
 
         is_negative = bool(negation.search(normalized))
         proposition = negation.sub("", normalized)
+        proposition = re.sub(
+            r"\b(?:must|may|shall)\b",
+            "",
+            proposition,
+        )
         proposition = re.sub(r"\s+", " ", proposition).strip()
         prior = polarity.get(proposition)
         if prior and prior[1] != is_negative:
