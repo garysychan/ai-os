@@ -9,7 +9,13 @@ from pathlib import Path
 from typing import Any
 
 from ai_os import __version__
-from ai_os.governance import ControlPlane, ControlPlaneError, load_control_plane
+from ai_os.governance import (
+    ConsistencyReport,
+    ControlPlane,
+    ControlPlaneError,
+    load_control_plane,
+    run_consistency_checks,
+)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -62,12 +68,11 @@ def _add_common_options(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def _status(control_plane: ControlPlane) -> str:
-    return "WARNING" if control_plane.warnings else "PASS"
-
-
-def _summary(control_plane: ControlPlane) -> dict[str, Any]:
-    status = _status(control_plane)
+def _summary(
+    control_plane: ControlPlane,
+    report: ConsistencyReport,
+) -> dict[str, Any]:
+    status = report.status
     return {
         "operation": "CONTROL PLANE CONSISTENCY CHECK",
         "runtime_version": __version__,
@@ -90,16 +95,22 @@ def _summary(control_plane: ControlPlane) -> dict[str, Any]:
         },
         "tasks": sorted(control_plane.tasks),
         "authority_domains": sorted(control_plane.authority_map),
-        "warnings": list(control_plane.warnings),
+        "warnings": [
+            item.message
+            for item in report.findings
+            if item.severity.name == "WARNING"
+        ],
+        "consistency": report.to_dict(),
     }
 
 
 def _print_human_report(
     control_plane: ControlPlane,
+    report: ConsistencyReport,
     *,
     operation: str,
 ) -> None:
-    status = _status(control_plane)
+    status = report.status
     print(operation)
     print()
     print(f"Runtime Version: {__version__}")
@@ -113,11 +124,19 @@ def _print_human_report(
     print(f"Authority Domains: {len(control_plane.authority_map)}")
     print(f"Status: {status}")
 
-    if control_plane.warnings:
+    if report.findings:
         print()
-        print("Warnings:")
-        for warning in control_plane.warnings:
-            print(f"- {warning}")
+        print("Findings:")
+        for finding in report.findings:
+            subject = f" [{finding.subject}]" if finding.subject else ""
+            print(
+                f"- {finding.check_id} {finding.severity.name}"
+                f" {finding.document}{subject}: {finding.message}"
+            )
+            if finding.evidence:
+                print(f"  Evidence: {finding.evidence}")
+            if finding.remediation:
+                print(f"  Remediation: {finding.remediation}")
 
 
 def _failure_payload(root: Path, error: ControlPlaneError) -> dict[str, str]:
@@ -155,15 +174,21 @@ def _run_load(
             print(f"Error: {error}")
         return 2
 
+    report = run_consistency_checks(control_plane)
+
     if as_json:
-        payload = _summary(control_plane)
+        payload = _summary(control_plane, report)
         payload["operation"] = operation
         print(json.dumps(payload, indent=2, ensure_ascii=False))
     else:
-        _print_human_report(control_plane, operation=operation)
+        _print_human_report(
+            control_plane,
+            report,
+            operation=operation,
+        )
 
-    # WARNING is non-blocking. FAIL returns 2 above.
-    return 0
+    # WARNING is non-blocking; semantic FAIL blocks execution.
+    return 2 if report.status == "FAIL" else 0
 
 
 def main(argv: Sequence[str] | None = None) -> int:
