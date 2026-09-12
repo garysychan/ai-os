@@ -198,6 +198,38 @@ Acceptance Criteria:
 - [ ] Review gate validated.
 - [ ] Failure/escalation path validated.
 
+## TASK-0009 — Enforce Main Branch Governance
+
+Priority: P0  
+Agent: Controller / Developer  
+Status: IN_PROGRESS  
+Dependencies: TASK-0007
+
+Description:
+Require every change to `main` to use a Pull Request and pass the Python 3.11 and Python 3.12 Control Plane checks.
+
+Acceptance Criteria:
+- [ ] Every Pull Request triggers both Control Plane checks.
+- [ ] `Python 3.11` is configured as a required check.
+- [ ] `Python 3.12` is configured as a required check.
+- [ ] Direct updates to `main` require a Pull Request.
+- [ ] Pending or failed required checks block merge.
+- [ ] Force pushes and deletion of `main` are blocked.
+- [ ] The `main-governance` ruleset is Active.
+- [ ] A validation Pull Request confirms enforcement.
+
+Artifacts:
+- CR-2026-004
+- `.github/workflows/control-plane-check.yml`
+
+Risks:
+- A missing required check could leave Pull Requests permanently blocked.
+- Repository Ruleset creation requires Owner administration permission.
+
+Notes:
+- Implementation started after explicit A3 human approval.
+- Ruleset activation remains a Repository Owner operation.
+
 ## Task Change Rules
 
 1. Do not silently delete completed tasks.

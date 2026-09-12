@@ -18,18 +18,6 @@ on:
       - "scripts/control_plane_check.py"
       - ".github/workflows/control-plane-check.yml"
   pull_request:
-    paths:
-      - "CONTROL_PLANE.md"
-      - "AGENTS.md"
-      - "PROJECT_RULES.md"
-      - "ARCHITECTURE.md"
-      - "WORKFLOW.md"
-      - "TASKS.md"
-      - "pyproject.toml"
-      - "src/**"
-      - "tests/**"
-      - "scripts/control_plane_check.py"
-      - ".github/workflows/control-plane-check.yml"
   workflow_dispatch:
 
 permissions:
