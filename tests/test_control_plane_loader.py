@@ -4,7 +4,11 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from ai_os.governance import load_control_plane, validate_required_files
+from ai_os.governance import (
+    build_authority_map,
+    load_control_plane,
+    validate_required_files,
+)
 from ai_os.governance.errors import MissingControlPlaneFileError
 
 
@@ -30,6 +34,26 @@ class ControlPlaneLoaderTests(unittest.TestCase):
             "CONTROL_PLANE.md",
         )
         self.assertEqual(control_plane.warnings, ())
+
+    def test_authority_model_accepts_numbered_level_one_heading(self) -> None:
+        markdown = """\
+# CONTROL_PLANE.md
+
+# 4. Authority Model
+
+| Decision Domain | Authoritative Document |
+|---|---|
+| Governance | `CONTROL_PLANE.md` |
+
+# 5. Operating Modes
+        """
+
+        authority_map = build_authority_map(markdown)
+
+        self.assertEqual(
+            authority_map["Governance"].document,
+            "CONTROL_PLANE.md",
+        )
 
     def test_validation_reports_all_missing_files(self) -> None:
         with TemporaryDirectory() as directory:
