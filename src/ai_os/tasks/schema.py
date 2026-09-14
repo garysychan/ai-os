@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from .errors import TaskValidationError
-from .models import Task, TaskStatus
+from .models import Priority, Task, TaskStatus
 
 _TASK_ID_RE = re.compile(r"^TASK-\d{4,}$")
 
@@ -14,6 +14,10 @@ def validation_issues(task: Task) -> tuple[str, ...]:
     """Return every deterministic schema violation for a Task."""
     issues: list[str] = []
 
+    if not isinstance(task.priority, Priority):
+        issues.append("priority must be a Priority enum")
+    if not isinstance(task.status, TaskStatus):
+        issues.append("status must be a TaskStatus enum")
     if not _TASK_ID_RE.fullmatch(task.task_id):
         issues.append("task_id must match TASK- followed by at least four digits")
     if not task.title.strip():
