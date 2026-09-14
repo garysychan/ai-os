@@ -79,7 +79,11 @@ class CanonicalAgent(Agent):
             status=ExecutionStatus.SUCCESS,
             summary=summary,
             handoff=handoff,
-            review_result=request.review_result,
+            review_result=(
+                request.review_result
+                if self.descriptor.role is AgentRole.REVIEWER
+                else None
+            ),
         )
 
 
