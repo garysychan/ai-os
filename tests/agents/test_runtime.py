@@ -13,10 +13,11 @@ from ai_os.tasks import (
 def make_task(
     status: TaskStatus = TaskStatus.IN_PROGRESS,
     dependencies: tuple[str, ...] = (),
+    agents: tuple[str, ...] = ("Developer",),
 ) -> Task:
     return Task(
         "TASK-0101", "Runtime task", Priority.P1, status,
-        ("Developer",), dependencies, (AcceptanceCriterion("complete"),),
+        agents, dependencies, (AcceptanceCriterion("complete"),),
         ("previous completion evidence",) if status is TaskStatus.DONE else (),
     )
 
@@ -79,6 +80,15 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(result.status, ExecutionStatus.SUCCESS)
         self.assertIsNone(result.review_result)
 
+    def test_unassigned_role_cannot_execute_task(self) -> None:
+        with self.assertRaises(ExecutionPreconditionError):
+            self.runtime.execute(ExecutionRequest(
+                task=make_task(agents=("Tester",)),
+                capability=Capability.IMPLEMENT,
+                objective="Implement", actor="Developer",
+                requested_role=AgentRole.DEVELOPER,
+            ))
+
     def test_role_cannot_run_in_unsupported_task_state(self) -> None:
         with self.assertRaises(ExecutionPreconditionError):
             self.runtime.execute(ExecutionRequest(
@@ -90,7 +100,7 @@ class RuntimeTests(unittest.TestCase):
 
     def test_review_requires_review_state_and_preserves_result(self) -> None:
         request = ExecutionRequest(
-            task=make_task(TaskStatus.REVIEW),
+            task=make_task(TaskStatus.REVIEW, agents=("Reviewer",)),
             capability=Capability.REVIEW,
             objective="Review", actor="Reviewer",
             requested_role=AgentRole.REVIEWER,
