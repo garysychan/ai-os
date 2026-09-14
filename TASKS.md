@@ -68,7 +68,7 @@ Acceptance Criteria:
 
 Priority: P0  
 Agent: Planner / Developer  
-Status: REVIEW  
+Status: DONE  
 Dependencies: TASK-0001
 
 Description:
@@ -89,7 +89,10 @@ Notes:
 - Recursive repository inspection covered 62 Git tree entries.
 - Alignment result: WARNING / NON-BLOCKING; no blocking architecture contradiction found.
 - Seven discrepancies and prioritized remediation actions are recorded in the alignment report.
-- Submitted for Reviewer validation.
+- Reviewer validation result: APPROVE.
+- PR #11 squash merged into `main` as `22d7b0c4b32e1b2c4a73c4c3e41536c0dc7a0338`.
+- Pull Request checks and post-merge Control Plane Check Run 34851475197 passed on Python 3.11 and Python 3.12.
+- G4 and G5 passed; TASK-0002 transitioned to `DONE`.
 
 ## TASK-0003 — Establish Codex Execution Workflow
 
