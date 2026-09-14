@@ -103,7 +103,7 @@ Acceptance Criteria:
 Priority: P1  
 Agent: Developer  
 Status: TODO  
-Dependencies: TASK-0003
+Dependencies: TASK-0003, TASK-0005
 
 Description:
 Create the initial runtime structure for Controller, Planner, Developer, Tester, Reviewer, and Fixer roles.
@@ -118,8 +118,8 @@ Acceptance Criteria:
 
 Priority: P1  
 Agent: Developer  
-Status: TODO  
-Dependencies: TASK-0004
+Status: IN_PROGRESS  
+Dependencies: TASK-0007
 
 Description:
 Connect the task state model to the project's durable task tracking mechanism.
@@ -129,6 +129,15 @@ Acceptance Criteria:
 - [ ] State transitions validated.
 - [ ] Invalid transitions rejected.
 - [ ] GitHub integration approach documented.
+
+Artifacts:
+- CR-2026-005
+- GitHub Issue #7
+- `feature/task-schema-state-machine`
+
+Notes:
+- A2 human approval received on 2026-09-14.
+- Task Schema and State Machine implementation started.
 
 ## TASK-0006 — Establish Automated Quality Gates
 
