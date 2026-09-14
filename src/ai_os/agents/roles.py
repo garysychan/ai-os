@@ -12,6 +12,8 @@ from .models import (
     ExecutionStatus,
     Handoff,
 )
+from ai_os.tasks import TaskStatus
+
 from .permissions import PermissionPolicy
 
 _ROLE_CAPABILITY = {
@@ -22,6 +24,18 @@ _ROLE_CAPABILITY = {
     AgentRole.TESTER: Capability.TEST,
     AgentRole.REVIEWER: Capability.REVIEW,
     AgentRole.FIXER: Capability.FIX,
+}
+
+_ROLE_STATUSES = {
+    AgentRole.CONTROLLER: frozenset({
+        TaskStatus.IN_PROGRESS, TaskStatus.BLOCKED, TaskStatus.REVIEW,
+    }),
+    AgentRole.PLANNER: frozenset({TaskStatus.IN_PROGRESS}),
+    AgentRole.RESEARCHER: frozenset({TaskStatus.IN_PROGRESS}),
+    AgentRole.DEVELOPER: frozenset({TaskStatus.IN_PROGRESS}),
+    AgentRole.TESTER: frozenset({TaskStatus.IN_PROGRESS}),
+    AgentRole.REVIEWER: frozenset({TaskStatus.REVIEW}),
+    AgentRole.FIXER: frozenset({TaskStatus.IN_PROGRESS}),
 }
 
 _ROLE_DESCRIPTION = {
@@ -48,6 +62,7 @@ class CanonicalAgent(Agent):
             role=role,
             capabilities=frozenset({_ROLE_CAPABILITY[role]}),
             permissions=policy.permissions_for(role),
+            supported_statuses=_ROLE_STATUSES[role],
             description=_ROLE_DESCRIPTION[role],
         )
 
