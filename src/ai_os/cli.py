@@ -14,9 +14,20 @@ from ai_os.governance import (
     ControlPlane,
     ControlPlaneError,
     MissingControlPlaneFileError,
+    TaskDefinition,
     load_control_plane,
+    parse_tasks,
     run_consistency_checks,
 )
+from ai_os.tasks import (
+    AcceptanceCriterion,
+    Priority,
+    Task,
+    TaskError,
+    TaskStatus,
+    validate_task,
+)
+from ai_os.workflow import ALLOWED_TRANSITIONS
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -51,6 +62,38 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Run the Control Plane consistency check.",
     )
     _add_common_options(check)
+
+    task = commands.add_parser(
+        "task",
+        help="Validate tasks and inspect the executable state policy.",
+    )
+    task_commands = task.add_subparsers(
+        dest="task_command",
+        required=True,
+    )
+    task_validate = task_commands.add_parser(
+        "validate",
+        help="Parse and validate a TASKS.md file against the runtime schema.",
+    )
+    task_validate.add_argument(
+        "path",
+        type=Path,
+        help="Path to the Markdown task registry.",
+    )
+    task_validate.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit machine-readable JSON.",
+    )
+    task_transitions = task_commands.add_parser(
+        "transitions",
+        help="List every allowed task-state transition.",
+    )
+    task_transitions.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit machine-readable JSON.",
+    )
 
     return parser
 
@@ -210,6 +253,118 @@ def _run_load(
     return 2 if report.status == "FAIL" else 0
 
 
+
+def _runtime_task(definition: TaskDefinition) -> Task:
+    """Convert a parsed Markdown task to the canonical runtime schema."""
+    status = TaskStatus(definition.status) if definition.status else TaskStatus.TODO
+    criteria = tuple(
+        AcceptanceCriterion(
+            description=item,
+            completed=status is TaskStatus.DONE,
+        )
+        for item in definition.acceptance_criteria
+    )
+    evidence = (
+        ("TASKS.md records completed acceptance criteria",)
+        if status is TaskStatus.DONE
+        else ()
+    )
+    return Task(
+        task_id=definition.task_id,
+        title=definition.title,
+        priority=Priority(definition.priority or "P2"),
+        status=status,
+        agents=definition.agents,
+        dependencies=definition.dependencies,
+        acceptance_criteria=criteria,
+        completion_evidence=evidence,
+    )
+
+
+def _run_task_validate(path: Path, *, as_json: bool) -> int:
+    resolved = path.expanduser().resolve()
+    try:
+        markdown = resolved.read_text(encoding="utf-8")
+        definitions = parse_tasks(markdown)
+        tasks = tuple(
+            validate_task(_runtime_task(definition))
+            for definition in definitions.values()
+        )
+    except (OSError, UnicodeError, ValueError, ControlPlaneError, TaskError) as error:
+        payload = {
+            "operation": "TASK SCHEMA VALIDATION",
+            "path": str(resolved),
+            "status": "FAIL",
+            "error_type": type(error).__name__,
+            "error": str(error),
+        }
+        if as_json:
+            print(json.dumps(payload, indent=2, ensure_ascii=False))
+        else:
+            print("TASK SCHEMA VALIDATION")
+            print()
+            print(f"Path: {resolved}")
+            print("Status: FAIL")
+            print(f"Error: {error}")
+        return 2
+
+    payload = {
+        "operation": "TASK SCHEMA VALIDATION",
+        "path": str(resolved),
+        "status": "PASS",
+        "tasks": [
+            {
+                "task_id": task.task_id,
+                "status": task.status.value,
+                "priority": task.priority.value,
+                "agents": list(task.agents),
+                "dependencies": list(task.dependencies),
+                "acceptance_criteria": len(task.acceptance_criteria),
+            }
+            for task in tasks
+        ],
+    }
+    if as_json:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+    else:
+        print("TASK SCHEMA VALIDATION")
+        print()
+        print(f"Path: {resolved}")
+        print(f"Tasks: {len(tasks)}")
+        print("Status: PASS")
+    return 0
+
+
+def _run_task_transitions(*, as_json: bool) -> int:
+    transitions = sorted(
+        (
+            {"from": source.value, "to": target.value}
+            for source, target in ALLOWED_TRANSITIONS
+        ),
+        key=lambda item: (item["from"], item["to"]),
+    )
+    if as_json:
+        print(
+            json.dumps(
+                {
+                    "operation": "TASK STATE TRANSITIONS",
+                    "status": "PASS",
+                    "transitions": transitions,
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+    else:
+        print("TASK STATE TRANSITIONS")
+        print()
+        for transition in transitions:
+            print(f"{transition['from']} -> {transition['to']}")
+        print()
+        print(f"Transitions: {len(transitions)}")
+        print("Status: PASS")
+    return 0
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the AI OS CLI and return a process exit code."""
     parser = _build_parser()
@@ -231,6 +386,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             as_json=args.json,
             operation="CONTROL PLANE CONSISTENCY CHECK",
         )
+
+    if args.command == "task" and args.task_command == "validate":
+        return _run_task_validate(args.path, as_json=args.json)
+
+    if args.command == "task" and args.task_command == "transitions":
+        return _run_task_transitions(as_json=args.json)
 
     parser.error("Unsupported command")
     return 2
