@@ -40,6 +40,11 @@ class AgentRuntime:
         validate_task(request.task)
         self._validate_request(request, dependency_states or {})
         agent = self.router.route(request)
+        if request.task.status not in agent.descriptor.supported_statuses:
+            raise ExecutionPreconditionError(
+                f"{agent.descriptor.role.value} does not support task state "
+                f"{request.task.status.value}"
+            )
         self._validate_authority(agent.descriptor.role, request)
         result = agent.execute(request)
         self._validate_result(agent.descriptor.role, result)
