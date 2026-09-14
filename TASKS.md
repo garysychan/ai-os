@@ -118,17 +118,17 @@ Acceptance Criteria:
 
 Priority: P1  
 Agent: Developer  
-Status: IN_PROGRESS  
+Status: REVIEW  
 Dependencies: TASK-0007
 
 Description:
 Connect the task state model to the project's durable task tracking mechanism.
 
 Acceptance Criteria:
-- [ ] Task IDs supported.
-- [ ] State transitions validated.
-- [ ] Invalid transitions rejected.
-- [ ] GitHub integration approach documented.
+- [x] Task IDs supported.
+- [x] State transitions validated.
+- [x] Invalid transitions rejected.
+- [x] GitHub integration approach documented.
 
 Artifacts:
 - CR-2026-005
@@ -138,6 +138,11 @@ Artifacts:
 Notes:
 - A2 human approval received on 2026-09-14.
 - Task Schema and State Machine implementation started.
+- Runtime Task Schema, State Machine, DONE Gate, and Transition Events implemented.
+- CLI commands `aios task validate` and `aios task transitions` implemented.
+- GitHub integration remains adapter-based; direct TASKS.md persistence is explicitly deferred.
+- Python 3.11 and Python 3.12 passed 41 tests in GitHub Actions Run 34848600031.
+- Implementation submitted for Reviewer validation in Draft PR #8.
 
 ## TASK-0006 — Establish Automated Quality Gates
 
