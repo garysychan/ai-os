@@ -98,7 +98,7 @@ Notes:
 
 Priority: P1  
 Agent: Planner / Developer  
-Status: TODO  
+Status: IN_PROGRESS  
 Dependencies: TASK-0002
 
 Description:
@@ -111,6 +111,14 @@ Acceptance Criteria:
 - [ ] Test flow defined.
 - [ ] Review flow defined.
 - [ ] Git/PR flow defined.
+
+Artifacts:
+- `docs/codex-execution-workflow.md`
+- `feature/codex-execution-workflow`
+
+Notes:
+- Dependency gate verified: TASK-0002 is DONE.
+- Workflow specification started from authoritative `main` commit `79f29ab3c7f0e2d9c3bfb313ef5045be252db590`.
 
 ## TASK-0004 — Implement Agent Runtime Skeleton
 
