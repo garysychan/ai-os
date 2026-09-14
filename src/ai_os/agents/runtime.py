@@ -73,12 +73,17 @@ class AgentRuntime:
             raise ExecutionPreconditionError(
                 "Reviewer execution requires task state REVIEW"
             )
-        if (
-            request.capability is not Capability.REVIEW
-            and request.review_result is not None
-        ):
+        review_evidence_allowed = (
+            request.capability is Capability.REVIEW
+            or (
+                request.capability is Capability.GOVERN
+                and request.target_status is TaskStatus.DONE
+            )
+        )
+        if request.review_result is not None and not review_evidence_allowed:
             raise PermissionDeniedError(
-                "Only Reviewer execution may carry a review result"
+                "Review evidence is only valid for Reviewer execution "
+                "or governed completion"
             )
 
     def _validate_authority(
