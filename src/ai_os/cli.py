@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from ai_os import __version__
+from ai_os.agents import AgentRegistry, AgentRole, canonical_agents
 from ai_os.governance import (
     ConsistencyReport,
     ControlPlane,
@@ -90,6 +91,34 @@ def _build_parser() -> argparse.ArgumentParser:
         help="List every allowed task-state transition.",
     )
     task_transitions.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit machine-readable JSON.",
+    )
+
+    agent = commands.add_parser(
+        "agent",
+        help="Inspect the executable Agent Runtime.",
+    )
+    agent_commands = agent.add_subparsers(
+        dest="agent_command",
+        required=True,
+    )
+    agent_list = agent_commands.add_parser(
+        "list",
+        help="List canonical executable Agents.",
+    )
+    agent_list.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit machine-readable JSON.",
+    )
+    agent_describe = agent_commands.add_parser(
+        "describe",
+        help="Describe one canonical Agent role.",
+    )
+    agent_describe.add_argument("role", help="Canonical Agent role name.")
+    agent_describe.add_argument(
         "--json",
         action="store_true",
         help="Emit machine-readable JSON.",
@@ -365,6 +394,79 @@ def _run_task_transitions(*, as_json: bool) -> int:
         print("Status: PASS")
     return 0
 
+def _agent_payload(role: AgentRole) -> dict[str, Any]:
+    registry = AgentRegistry(canonical_agents())
+    descriptor = registry.get(role).descriptor
+    return {
+        "role": descriptor.role.value,
+        "capabilities": sorted(item.value for item in descriptor.capabilities),
+        "permissions": sorted(item.value for item in descriptor.permissions),
+        "description": descriptor.description,
+    }
+
+
+def _run_agent_list(*, as_json: bool) -> int:
+    payload = [_agent_payload(role) for role in AgentRole]
+    payload.sort(key=lambda item: item["role"])
+    if as_json:
+        print(json.dumps(
+            {"operation": "AGENT LIST", "status": "PASS", "agents": payload},
+            indent=2,
+            ensure_ascii=False,
+        ))
+    else:
+        print("AGENT LIST")
+        print()
+        for item in payload:
+            capabilities = ", ".join(item["capabilities"])
+            print(f"{item['role']}: {capabilities}")
+        print()
+        print(f"Agents: {len(payload)}")
+        print("Status: PASS")
+    return 0
+
+
+def _run_agent_describe(role_name: str, *, as_json: bool) -> int:
+    try:
+        role = next(
+            item for item in AgentRole
+            if item.value.casefold() == role_name.strip().casefold()
+        )
+    except StopIteration:
+        choices = ", ".join(item.value for item in AgentRole)
+        if as_json:
+            print(json.dumps({
+                "operation": "AGENT DESCRIBE",
+                "status": "FAIL",
+                "error": f"Unknown Agent role: {role_name}",
+                "allowed_roles": [item.value for item in AgentRole],
+            }, indent=2, ensure_ascii=False))
+        else:
+            print("AGENT DESCRIBE")
+            print()
+            print("Status: FAIL")
+            print(f"Error: Unknown Agent role: {role_name}")
+            print(f"Allowed: {choices}")
+        return 2
+
+    payload = _agent_payload(role)
+    if as_json:
+        print(json.dumps(
+            {"operation": "AGENT DESCRIBE", "status": "PASS", **payload},
+            indent=2,
+            ensure_ascii=False,
+        ))
+    else:
+        print("AGENT DESCRIBE")
+        print()
+        print(f"Role: {payload['role']}")
+        print(f"Description: {payload['description']}")
+        print("Capabilities: " + ", ".join(payload["capabilities"]))
+        print("Permissions: " + ", ".join(payload["permissions"]))
+        print("Status: PASS")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the AI OS CLI and return a process exit code."""
     parser = _build_parser()
@@ -392,6 +494,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "task" and args.task_command == "transitions":
         return _run_task_transitions(as_json=args.json)
+
+    if args.command == "agent" and args.agent_command == "list":
+        return _run_agent_list(as_json=args.json)
+
+    if args.command == "agent" and args.agent_command == "describe":
+        return _run_agent_describe(args.role, as_json=args.json)
 
     parser.error("Unsupported command")
     return 2
