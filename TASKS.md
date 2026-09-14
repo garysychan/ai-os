@@ -98,19 +98,19 @@ Notes:
 
 Priority: P1  
 Agent: Planner / Developer  
-Status: IN_PROGRESS  
+Status: REVIEW  
 Dependencies: TASK-0002
 
 Description:
 Define the practical workflow for using Codex to implement GitHub repository tasks under AI OS governance.
 
 Acceptance Criteria:
-- [ ] Task intake defined.
-- [ ] Repository inspection defined.
-- [ ] Implementation flow defined.
-- [ ] Test flow defined.
-- [ ] Review flow defined.
-- [ ] Git/PR flow defined.
+- [x] Task intake defined.
+- [x] Repository inspection defined.
+- [x] Implementation flow defined.
+- [x] Test flow defined.
+- [x] Review flow defined.
+- [x] Git/PR flow defined.
 
 Artifacts:
 - `docs/codex-execution-workflow.md`
@@ -119,6 +119,9 @@ Artifacts:
 Notes:
 - Dependency gate verified: TASK-0002 is DONE.
 - Workflow specification started from authoritative `main` commit `79f29ab3c7f0e2d9c3bfb313ef5045be252db590`.
+- Operational contract defines intake, repository inspection, planning, implementation, testing, Reviewer/Fix cycle, protected Git/PR flow, completion evidence, handoffs, and stop conditions.
+- No authoritative Control Plane semantics or permissions were changed.
+- Submitted for Reviewer validation.
 
 ## TASK-0004 — Implement Agent Runtime Skeleton
 
