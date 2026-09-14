@@ -51,6 +51,7 @@ class AgentDescriptor:
     role: AgentRole
     capabilities: frozenset[Capability]
     permissions: frozenset[Permission]
+    supported_statuses: frozenset[TaskStatus]
     description: str
 
 
