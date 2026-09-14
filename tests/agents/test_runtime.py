@@ -79,6 +79,15 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(result.status, ExecutionStatus.SUCCESS)
         self.assertIsNone(result.review_result)
 
+    def test_role_cannot_run_in_unsupported_task_state(self) -> None:
+        with self.assertRaises(ExecutionPreconditionError):
+            self.runtime.execute(ExecutionRequest(
+                task=make_task(TaskStatus.REVIEW),
+                capability=Capability.IMPLEMENT,
+                objective="Implement during review", actor="Developer",
+                requested_role=AgentRole.DEVELOPER,
+            ))
+
     def test_review_requires_review_state_and_preserves_result(self) -> None:
         request = ExecutionRequest(
             task=make_task(TaskStatus.REVIEW),
