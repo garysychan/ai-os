@@ -98,7 +98,7 @@ Notes:
 
 Priority: P1  
 Agent: Planner / Developer  
-Status: REVIEW  
+Status: DONE  
 Dependencies: TASK-0002
 
 Description:
@@ -121,7 +121,10 @@ Notes:
 - Workflow specification started from authoritative `main` commit `79f29ab3c7f0e2d9c3bfb313ef5045be252db590`.
 - Operational contract defines intake, repository inspection, planning, implementation, testing, Reviewer/Fix cycle, protected Git/PR flow, completion evidence, handoffs, and stop conditions.
 - No authoritative Control Plane semantics or permissions were changed.
-- Submitted for Reviewer validation.
+- Reviewer validation result: APPROVE.
+- PR #13 squash merged into `main` as `8cdf446b2b005bae322240be1d07da8a7e90b217`.
+- Pull Request checks and post-merge Control Plane Check Run 34852245761 passed on Python 3.11 and Python 3.12.
+- G4 and G5 passed; TASK-0003 transitioned to `DONE`.
 
 ## TASK-0004 — Implement Agent Runtime Skeleton
 
