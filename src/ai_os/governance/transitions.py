@@ -1,22 +1,16 @@
-"""Executable task-state transition policy."""
+"""Backward-compatible access to the executable transition policy."""
 
 from __future__ import annotations
 
+from ai_os.workflow.transitions import (
+    ALLOWED_TRANSITIONS as _RUNTIME_TRANSITIONS,
+)
+from ai_os.workflow.transitions import is_valid_transition
+
+# Preserve the original governance API shape: pairs of state-name strings.
 ALLOWED_TRANSITIONS = frozenset(
-    {
-        ("TODO", "IN_PROGRESS"),
-        ("TODO", "BLOCKED"),
-        ("IN_PROGRESS", "REVIEW"),
-        ("IN_PROGRESS", "BLOCKED"),
-        ("REVIEW", "IN_PROGRESS"),
-        ("REVIEW", "DONE"),
-        ("REVIEW", "BLOCKED"),
-        ("BLOCKED", "TODO"),
-        ("BLOCKED", "IN_PROGRESS"),
-    }
+    (source.value, target.value)
+    for source, target in _RUNTIME_TRANSITIONS
 )
 
-
-def is_valid_transition(source: str, target: str) -> bool:
-    """Return whether a task transition is permitted by the V2 policy."""
-    return (source, target) in ALLOWED_TRANSITIONS
+__all__ = ["ALLOWED_TRANSITIONS", "is_valid_transition"]
