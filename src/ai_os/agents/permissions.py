@@ -3,7 +3,17 @@
 from __future__ import annotations
 
 from .errors import PermissionDeniedError
-from .models import AgentRole, Permission
+from .models import AgentRole, Capability, Permission
+
+CAPABILITY_PERMISSION = {
+    Capability.GOVERN: Permission.COORDINATE,
+    Capability.PLAN: Permission.PROPOSE_CHANGE,
+    Capability.RESEARCH: Permission.READ_CONTROL,
+    Capability.IMPLEMENT: Permission.MODIFY_CODE,
+    Capability.TEST: Permission.READ_CONTROL,
+    Capability.REVIEW: Permission.APPROVE_REVIEW,
+    Capability.FIX: Permission.MODIFY_CODE,
+}
 
 _ROLE_PERMISSIONS: dict[AgentRole, frozenset[Permission]] = {
     AgentRole.CONTROLLER: frozenset({
