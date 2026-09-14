@@ -5,7 +5,7 @@ from __future__ import annotations
 from .base import Agent
 from .errors import AmbiguousRouteError, RoutingError
 from .models import ExecutionRequest
-from .permissions import PermissionPolicy
+from .permissions import CAPABILITY_PERMISSION, PermissionPolicy
 from .registry import AgentRegistry
 
 
@@ -44,6 +44,10 @@ class AgentRouter:
             )
 
         agent = candidates[0]
+        self.policy.require(
+            agent.descriptor.role,
+            CAPABILITY_PERMISSION[request.capability],
+        )
         if request.required_permission is not None:
             self.policy.require(agent.descriptor.role, request.required_permission)
         return agent
