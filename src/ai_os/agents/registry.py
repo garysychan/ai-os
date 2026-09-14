@@ -21,6 +21,10 @@ class AgentRegistry:
             raise AgentValidationError(
                 f"{descriptor.role.value} must declare at least one capability"
             )
+        if not descriptor.supported_statuses:
+            raise AgentValidationError(
+                f"{descriptor.role.value} must declare supported task states"
+            )
         if descriptor.role in self._agents:
             raise DuplicateAgentError(
                 f"Agent already registered: {descriptor.role.value}"
