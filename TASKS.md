@@ -130,7 +130,7 @@ Notes:
 
 Priority: P1  
 Agent: Developer  
-Status: TODO  
+Status: IN_PROGRESS  
 Dependencies: TASK-0003, TASK-0005
 
 Description:
@@ -141,6 +141,18 @@ Acceptance Criteria:
 - [ ] Agent routing defined.
 - [ ] Execution state model implemented.
 - [ ] Basic tests added.
+
+Artifacts:
+- CR-2026-006
+- GitHub Issue #10
+- `feature/agent-runtime`
+- `src/ai_os/agents/`
+- `tests/agents/`
+
+Notes:
+- CR-2026-006 has A2 Human Approval.
+- Dependency gate verified: TASK-0003 and TASK-0005 are DONE.
+- Agent Runtime implementation started from authoritative `main` commit `d73df382bffea142bc8b51425cfdcf2fc00d4292`.
 
 ## TASK-0005 — Implement Task Registry Integration
 
