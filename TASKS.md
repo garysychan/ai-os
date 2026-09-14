@@ -130,7 +130,7 @@ Notes:
 
 Priority: P1  
 Agent: Developer  
-Status: REVIEW  
+Status: DONE  
 Dependencies: TASK-0003, TASK-0005
 
 Description:
@@ -159,7 +159,10 @@ Notes:
 - Pre-review validation passed 68 tests on Python 3.11 and Python 3.12 in Run 34855789460.
 - Whole-branch security review added mandatory capability-to-permission mapping and Task role-assignment enforcement.
 - Bootstrap and Control Plane Consistency Check passed with only pre-existing non-blocking warnings.
-- Submitted for Reviewer validation in Draft PR #15.
+- Reviewer validation result: APPROVE.
+- PR #15 was marked Ready for Review and squash merged into `main` as `89d7dd157ac0b7ece7c020ec0b021ec665e12b79`.
+- Post-merge Control Plane Check Run 34856360227 passed on Python 3.11 and Python 3.12.
+- All acceptance criteria, G4 Reviewer gate, and G5 merge/validation gate passed; TASK-0004 transitioned to `DONE`.
 
 ## TASK-0005 — Implement Task Registry Integration
 
