@@ -118,7 +118,7 @@ Acceptance Criteria:
 
 Priority: P1  
 Agent: Developer  
-Status: REVIEW  
+Status: DONE  
 Dependencies: TASK-0007
 
 Description:
@@ -142,7 +142,10 @@ Notes:
 - CLI commands `aios task validate` and `aios task transitions` implemented.
 - GitHub integration remains adapter-based; direct TASKS.md persistence is explicitly deferred.
 - Python 3.11 and Python 3.12 passed 41 tests in GitHub Actions Run 34848600031.
-- Implementation submitted for Reviewer validation in Draft PR #8.
+- Reviewer validation result: APPROVE.
+- PR #8 was marked Ready for Review and squash merged into `main` as commit `93c990a9dbb55b986f6c002681d8622855da7015`.
+- Post-merge Control Plane Check Run 34849315810 passed on Python 3.11 and Python 3.12.
+- Quality Gate G4 and merge gate G5 passed; task transitioned to `DONE`.
 
 ## TASK-0006 — Establish Automated Quality Gates
 
