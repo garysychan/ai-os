@@ -3,6 +3,7 @@ import unittest
 
 from ai_os.agents import AgentRole, Capability, ExecutionStatus
 from ai_os.agents.models import AgentDescriptor
+from ai_os.tasks import TaskStatus
 
 
 class AgentModelTests(unittest.TestCase):
@@ -16,7 +17,7 @@ class AgentModelTests(unittest.TestCase):
     def test_descriptor_is_immutable(self) -> None:
         descriptor = AgentDescriptor(
             AgentRole.PLANNER, frozenset({Capability.PLAN}),
-            frozenset(), "Plans work",
+            frozenset(), frozenset({TaskStatus.IN_PROGRESS}), "Plans work",
         )
         with self.assertRaises(FrozenInstanceError):
             descriptor.description = "changed"  # type: ignore[misc]
