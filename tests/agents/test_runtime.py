@@ -17,6 +17,7 @@ def make_task(
     return Task(
         "TASK-0101", "Runtime task", Priority.P1, status,
         ("Developer",), dependencies, (AcceptanceCriterion("complete"),),
+        ("previous completion evidence",) if status is TaskStatus.DONE else (),
     )
 
 
@@ -63,6 +64,20 @@ class RuntimeTests(unittest.TestCase):
                 requested_role=AgentRole.DEVELOPER,
                 target_status=TaskStatus.DONE,
             ))
+
+    def test_controller_completion_requires_approved_review(self) -> None:
+        request = ExecutionRequest(
+            task=make_task(TaskStatus.REVIEW),
+            capability=Capability.GOVERN,
+            objective="Complete governed task",
+            actor="Controller",
+            requested_role=AgentRole.CONTROLLER,
+            target_status=TaskStatus.DONE,
+            review_result=ReviewResult.APPROVE,
+        )
+        result = self.runtime.execute(request)
+        self.assertEqual(result.status, ExecutionStatus.SUCCESS)
+        self.assertIsNone(result.review_result)
 
     def test_review_requires_review_state_and_preserves_result(self) -> None:
         request = ExecutionRequest(
