@@ -130,17 +130,36 @@ Notes:
 
 Priority: P1  
 Agent: Developer  
-Status: TODO  
+Status: REVIEW  
 Dependencies: TASK-0003, TASK-0005
 
 Description:
 Create the initial runtime structure for Controller, Planner, Developer, Tester, Reviewer, and Fixer roles.
 
 Acceptance Criteria:
-- [ ] Agent interfaces defined.
-- [ ] Agent routing defined.
-- [ ] Execution state model implemented.
-- [ ] Basic tests added.
+- [x] Agent interfaces defined.
+- [x] Agent routing defined.
+- [x] Execution state model implemented.
+- [x] Basic tests added.
+
+Artifacts:
+- CR-2026-006
+- GitHub Issue #10
+- `feature/agent-runtime`
+- `src/ai_os/agents/`
+- `tests/agents/`
+
+Notes:
+- CR-2026-006 has A2 Human Approval.
+- Dependency gate verified: TASK-0003 and TASK-0005 are DONE.
+- Agent Runtime implementation started from authoritative `main` commit `d73df382bffea142bc8b51425cfdcf2fc00d4292`.
+- Typed Agent contract, seven canonical roles, explicit capabilities/permissions/status contexts, Registry, Router, Runtime, immutable Result/Handoff, and CLI inspection commands implemented.
+- Default-deny permissions and task/dependency/status preconditions are enforced without hidden Task mutation.
+- Initial CI Run 34854362189 exposed one invalid DONE test fixture; Fix Cycle corrected the fixture and strengthened governed completion evidence handling.
+- Pre-review validation passed 68 tests on Python 3.11 and Python 3.12 in Run 34855789460.
+- Whole-branch security review added mandatory capability-to-permission mapping and Task role-assignment enforcement.
+- Bootstrap and Control Plane Consistency Check passed with only pre-existing non-blocking warnings.
+- Submitted for Reviewer validation in Draft PR #15.
 
 ## TASK-0005 — Implement Task Registry Integration
 
