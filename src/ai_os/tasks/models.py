@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 
 
@@ -54,4 +54,4 @@ class Task:
     dependencies: tuple[str, ...]
     acceptance_criteria: tuple[AcceptanceCriterion, ...]
     completion_evidence: tuple[str, ...] = ()
-    metadata: dict[str, str] = field(default_factory=dict, compare=False)
+    metadata: tuple[tuple[str, str], ...] = ()
