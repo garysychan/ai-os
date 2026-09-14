@@ -68,7 +68,7 @@ Acceptance Criteria:
 
 Priority: P0  
 Agent: Planner / Developer  
-Status: TODO  
+Status: IN_PROGRESS  
 Dependencies: TASK-0001
 
 Description:
@@ -79,6 +79,13 @@ Acceptance Criteria:
 - [ ] Actual modules documented.
 - [ ] Architecture discrepancies identified.
 - [ ] Required architecture changes proposed.
+
+Artifacts:
+- `docs/repository-architecture-alignment.md`
+- `feature/repository-architecture-alignment`
+
+Notes:
+- Architecture validation started from authoritative `main` commit `30691a257be5b4d526956b8897e7ea3d06484090`.
 
 ## TASK-0003 — Establish Codex Execution Workflow
 
