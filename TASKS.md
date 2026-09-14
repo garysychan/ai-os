@@ -156,7 +156,8 @@ Notes:
 - Typed Agent contract, seven canonical roles, explicit capabilities/permissions/status contexts, Registry, Router, Runtime, immutable Result/Handoff, and CLI inspection commands implemented.
 - Default-deny permissions and task/dependency/status preconditions are enforced without hidden Task mutation.
 - Initial CI Run 34854362189 exposed one invalid DONE test fixture; Fix Cycle corrected the fixture and strengthened governed completion evidence handling.
-- Python 3.11 and Python 3.12 passed 67 tests in Run 34855282439.
+- Pre-review validation passed 68 tests on Python 3.11 and Python 3.12 in Run 34855789460.
+- Whole-branch security review added mandatory capability-to-permission mapping and Task role-assignment enforcement.
 - Bootstrap and Control Plane Consistency Check passed with only pre-existing non-blocking warnings.
 - Submitted for Reviewer validation in Draft PR #15.
 
