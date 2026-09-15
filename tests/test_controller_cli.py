@@ -2,6 +2,7 @@
 
 import io
 import json
+import re
 import shutil
 import unittest
 from contextlib import redirect_stdout
@@ -34,14 +35,15 @@ class ControllerCliTests(unittest.TestCase):
             ):
                 shutil.copy(name, root / name)
             tasks = (root / "TASKS.md").read_text(encoding="utf-8")
-            tasks = tasks.replace(
-                "## TASK-0010 — Install Controller Orchestration Engine\n\n"
-                "Priority: P1  \nAgent: Controller / Developer / Tester / Reviewer  \n"
-                "Status: REVIEW",
-                "## TASK-0010 — Install Controller Orchestration Engine\n\n"
-                "Priority: P1  \nAgent: Controller / Developer / Tester / Reviewer  \n"
-                "Status: IN_PROGRESS",
+            tasks, replacements = re.subn(
+                r"(## TASK-0010\b.*?\nStatus:)\s*"
+                r"(?:TODO|IN_PROGRESS|BLOCKED|REVIEW|DONE)(?=\s*\nDependencies:)",
+                r"\1 IN_PROGRESS",
+                tasks,
+                count=1,
+                flags=re.DOTALL,
             )
+            self.assertEqual(replacements, 1)
             (root / "TASKS.md").write_text(tasks, encoding="utf-8")
             code, payload = self.run_cli(
                 "run",
