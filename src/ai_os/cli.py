@@ -5,11 +5,24 @@ from __future__ import annotations
 import argparse
 import json
 from collections.abc import Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from ai_os import __version__
-from ai_os.agents import AgentRegistry, AgentRole, canonical_agents
+from ai_os.agents import (
+    AgentRegistry,
+    AgentRole,
+    AgentRouter,
+    AgentRuntime,
+    canonical_agents,
+)
+from ai_os.controller import (
+    ControllerEngine,
+    ControllerError,
+    ControllerValidationError,
+    InMemorySessionStore,
+)
 from ai_os.governance import (
     ConsistencyReport,
     ControlPlane,
@@ -29,6 +42,8 @@ from ai_os.tasks import (
     validate_task,
 )
 from ai_os.workflow import ALLOWED_TRANSITIONS
+
+_SESSION_STORE = InMemorySessionStore()
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -124,6 +139,25 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Emit machine-readable JSON.",
     )
 
+    run = commands.add_parser("run", help="Create a governed Controller session.")
+    run.add_argument("task_id", help="Task identifier from TASKS.md.")
+    run.add_argument("--objective", required=True, help="Explicit execution objective.")
+    run.add_argument("--root", type=Path, default=Path.cwd())
+    run.add_argument(
+        "--dry-run",
+        action="store_true",
+        required=True,
+        help="Validate and create a side-effect-free in-memory session.",
+    )
+    run.add_argument("--json", action="store_true")
+
+    session = commands.add_parser("session", help="Inspect process-local sessions.")
+    session_commands = session.add_subparsers(dest="session_command", required=True)
+    for command in ("show", "trace"):
+        inspect = session_commands.add_parser(command)
+        inspect.add_argument("session_id")
+        inspect.add_argument("--json", action="store_true")
+
     return parser
 
 
@@ -168,11 +202,7 @@ def _summary(
         },
         "tasks": sorted(control_plane.tasks),
         "authority_domains": sorted(control_plane.authority_map),
-        "warnings": [
-            item.message
-            for item in report.findings
-            if item.severity.name == "WARNING"
-        ],
+        "warnings": [item.message for item in report.findings if item.severity.name == "WARNING"],
         "consistency": report.to_dict(),
     }
 
@@ -213,11 +243,7 @@ def _print_human_report(
 
 
 def _failure_payload(root: Path, error: ControlPlaneError) -> dict[str, Any]:
-    check_id = (
-        "CP-C01"
-        if isinstance(error, MissingControlPlaneFileError)
-        else "CP-C02"
-    )
+    check_id = "CP-C01" if isinstance(error, MissingControlPlaneFileError) else "CP-C02"
     finding = {
         "check_id": check_id,
         "severity": "FAIL",
@@ -239,6 +265,7 @@ def _failure_payload(root: Path, error: ControlPlaneError) -> dict[str, Any]:
             "findings": [finding],
         },
     }
+
 
 def _run_load(
     root: Path,
@@ -282,7 +309,6 @@ def _run_load(
     return 2 if report.status == "FAIL" else 0
 
 
-
 def _runtime_task(definition: TaskDefinition) -> Task:
     """Convert a parsed Markdown task to the canonical runtime schema."""
     status = TaskStatus(definition.status) if definition.status else TaskStatus.TODO
@@ -294,9 +320,7 @@ def _runtime_task(definition: TaskDefinition) -> Task:
         for item in definition.acceptance_criteria
     )
     evidence = (
-        ("TASKS.md records completed acceptance criteria",)
-        if status is TaskStatus.DONE
-        else ()
+        ("TASKS.md records completed acceptance criteria",) if status is TaskStatus.DONE else ()
     )
     return Task(
         task_id=definition.task_id,
@@ -316,8 +340,7 @@ def _run_task_validate(path: Path, *, as_json: bool) -> int:
         markdown = resolved.read_text(encoding="utf-8")
         definitions = parse_tasks(markdown)
         tasks = tuple(
-            validate_task(_runtime_task(definition))
-            for definition in definitions.values()
+            validate_task(_runtime_task(definition)) for definition in definitions.values()
         )
     except (OSError, UnicodeError, ValueError, ControlPlaneError, TaskError) as error:
         payload = {
@@ -366,10 +389,7 @@ def _run_task_validate(path: Path, *, as_json: bool) -> int:
 
 def _run_task_transitions(*, as_json: bool) -> int:
     transitions = sorted(
-        (
-            {"from": source.value, "to": target.value}
-            for source, target in ALLOWED_TRANSITIONS
-        ),
+        ({"from": source.value, "to": target.value} for source, target in ALLOWED_TRANSITIONS),
         key=lambda item: (item["from"], item["to"]),
     )
     if as_json:
@@ -394,6 +414,7 @@ def _run_task_transitions(*, as_json: bool) -> int:
         print("Status: PASS")
     return 0
 
+
 def _agent_payload(role: AgentRole) -> dict[str, Any]:
     registry = AgentRegistry(canonical_agents())
     descriptor = registry.get(role).descriptor
@@ -409,11 +430,13 @@ def _run_agent_list(*, as_json: bool) -> int:
     payload = [_agent_payload(role) for role in AgentRole]
     payload.sort(key=lambda item: item["role"])
     if as_json:
-        print(json.dumps(
-            {"operation": "AGENT LIST", "status": "PASS", "agents": payload},
-            indent=2,
-            ensure_ascii=False,
-        ))
+        print(
+            json.dumps(
+                {"operation": "AGENT LIST", "status": "PASS", "agents": payload},
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
     else:
         print("AGENT LIST")
         print()
@@ -426,21 +449,122 @@ def _run_agent_list(*, as_json: bool) -> int:
     return 0
 
 
+def _session_payload(session_id: str, *, trace_only: bool = False) -> dict[str, Any]:
+    session = _SESSION_STORE.get(session_id)
+    events = [
+        {
+            "sequence": event.sequence,
+            "type": event.event_type.value,
+            "stage": event.stage.value,
+            "actor": event.actor.value,
+            "timestamp": event.timestamp.isoformat(),
+            "reason": event.reason,
+            "evidence": list(event.evidence),
+        }
+        for event in session.events
+    ]
+    if trace_only:
+        return {"session_id": session.session_id, "events": events}
+    return {
+        "session_id": session.session_id,
+        "task_id": session.task_id,
+        "objective": session.objective,
+        "stage": session.stage.value,
+        "task_status": session.task_status.value,
+        "outcome": session.outcome.value if session.outcome else None,
+        "fix_attempts": session.fix_attempts,
+        "max_fix_attempts": session.max_fix_attempts,
+        "events": events,
+    }
+
+
+def _run_controller_dry_run(
+    task_id: str,
+    objective: str,
+    root: Path,
+    *,
+    as_json: bool,
+) -> int:
+    try:
+        control_plane = load_control_plane(root)
+        definitions = control_plane.tasks
+        definition = definitions[task_id]
+        task = _runtime_task(definition)
+        dependency_states = {
+            dependency: TaskStatus(definitions[dependency].status or "TODO")
+            for dependency in task.dependencies
+        }
+        registry = AgentRegistry(canonical_agents())
+        engine = ControllerEngine(AgentRuntime(AgentRouter(registry)))
+        session = engine.start(
+            task,
+            objective,
+            dependency_states=dependency_states,
+            started_at=datetime.now(UTC),
+            approval_evidence=("dry-run: no external side effects authorized",),
+        )
+        _SESSION_STORE.save(session)
+    except (KeyError, ValueError, ControlPlaneError, ControllerError) as error:
+        payload = {"operation": "CONTROLLER DRY RUN", "status": "FAIL", "error": str(error)}
+        print(
+            json.dumps(payload, indent=2)
+            if as_json
+            else f"CONTROLLER DRY RUN\nStatus: FAIL\nError: {error}"
+        )
+        return 2
+    payload = {
+        "operation": "CONTROLLER DRY RUN",
+        "status": "PASS",
+        **_session_payload(session.session_id),
+    }
+    if as_json:
+        print(json.dumps(payload, indent=2))
+    else:
+        print("CONTROLLER DRY RUN")
+        print(f"Session: {session.session_id}")
+        print(f"Task: {session.task_id}")
+        print("Side Effects: NONE")
+        print("Status: PASS")
+    return 0
+
+
+def _run_session_inspect(session_id: str, *, trace_only: bool, as_json: bool) -> int:
+    try:
+        payload = _session_payload(session_id, trace_only=trace_only)
+    except ControllerValidationError as error:
+        payload = {"status": "FAIL", "error": str(error)}
+        print(json.dumps(payload, indent=2) if as_json else f"Status: FAIL\nError: {error}")
+        return 2
+    if as_json:
+        print(json.dumps({"status": "PASS", **payload}, indent=2))
+    else:
+        print("SESSION TRACE" if trace_only else "SESSION SHOW")
+        print(f"Session: {session_id}")
+        print(f"Events: {len(payload['events'])}")
+        print("Status: PASS")
+    return 0
+
+
 def _run_agent_describe(role_name: str, *, as_json: bool) -> int:
     try:
         role = next(
-            item for item in AgentRole
-            if item.value.casefold() == role_name.strip().casefold()
+            item for item in AgentRole if item.value.casefold() == role_name.strip().casefold()
         )
     except StopIteration:
         choices = ", ".join(item.value for item in AgentRole)
         if as_json:
-            print(json.dumps({
-                "operation": "AGENT DESCRIBE",
-                "status": "FAIL",
-                "error": f"Unknown Agent role: {role_name}",
-                "allowed_roles": [item.value for item in AgentRole],
-            }, indent=2, ensure_ascii=False))
+            print(
+                json.dumps(
+                    {
+                        "operation": "AGENT DESCRIBE",
+                        "status": "FAIL",
+                        "error": f"Unknown Agent role: {role_name}",
+                        "allowed_roles": [item.value for item in AgentRole],
+                    },
+                    indent=2,
+                    ensure_ascii=False,
+                )
+            )
         else:
             print("AGENT DESCRIBE")
             print()
@@ -451,11 +575,13 @@ def _run_agent_describe(role_name: str, *, as_json: bool) -> int:
 
     payload = _agent_payload(role)
     if as_json:
-        print(json.dumps(
-            {"operation": "AGENT DESCRIBE", "status": "PASS", **payload},
-            indent=2,
-            ensure_ascii=False,
-        ))
+        print(
+            json.dumps(
+                {"operation": "AGENT DESCRIBE", "status": "PASS", **payload},
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
     else:
         print("AGENT DESCRIBE")
         print()
@@ -479,10 +605,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             operation="AI OS CONTROL PLANE BOOTSTRAP",
         )
 
-    if (
-        args.command == "control-plane"
-        and args.control_command == "check"
-    ):
+    if args.command == "control-plane" and args.control_command == "check":
         return _run_load(
             args.root,
             as_json=args.json,
@@ -500,6 +623,21 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "agent" and args.agent_command == "describe":
         return _run_agent_describe(args.role, as_json=args.json)
+
+    if args.command == "run":
+        return _run_controller_dry_run(
+            args.task_id,
+            args.objective,
+            args.root,
+            as_json=args.json,
+        )
+
+    if args.command == "session":
+        return _run_session_inspect(
+            args.session_id,
+            trace_only=args.session_command == "trace",
+            as_json=args.json,
+        )
 
     parser.error("Unsupported command")
     return 2
