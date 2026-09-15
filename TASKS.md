@@ -273,7 +273,7 @@ Notes:
 Priority: P1  
 Agent: Reviewer  
 Status: TODO  
-Dependencies: TASK-0004, TASK-0005, TASK-0006, TASK-0010
+Dependencies: TASK-0004, TASK-0005, TASK-0006, TASK-0010, TASK-0011
 
 Description:
 Perform end-to-end validation of the AI OS MVP.
@@ -382,6 +382,63 @@ Notes:
 - PR #21 was squash merged through protected main governance as
   `ea16ecb221773608c112d2368eac0c62419b16aa`; G5 passed.
 - All acceptance criteria passed; TASK-0010 transitioned to `DONE`.
+
+## TASK-0011 — Install Execution Engine
+
+Priority: P1
+Agent: Controller / Developer / Tester / Reviewer / Fixer
+Status: TODO
+Dependencies: TASK-0004, TASK-0005, TASK-0006, TASK-0010
+
+Description:
+Install a deterministic, synchronous and provider-neutral Execution Engine that executes finite,
+typed plans through explicitly registered safe adapters while preserving Agent Runtime, State
+Machine, Reviewer and Control Plane authority boundaries.
+
+Acceptance Criteria:
+- [ ] Canonical immutable Execution Plan, Step, Session, Event and Result models exist.
+- [ ] Deterministic synchronous Execution Engine exists.
+- [ ] Typed port and adapter contracts exist.
+- [ ] Adapter Registry uses explicit, unambiguous and default-deny resolution.
+- [ ] Capability, permission, task-assignment and budget policies are enforced.
+- [ ] Step count, retry and cancellation behavior are finite and testable.
+- [ ] Non-idempotent operations are not retried by default.
+- [ ] Immutable ordered traces preserve every attempt and outcome.
+- [ ] Completed, blocked, failed, escalated and cancelled outcomes are executable.
+- [ ] Results return to Controller without direct Task mutation.
+- [ ] Reviewer independence and State Machine authority are preserved.
+- [ ] Core execution remains provider-neutral and side-effect free.
+- [ ] Only mock, in-memory or no-op adapters are installed initially.
+- [ ] CLI dry-run, plan validation and inspection are available or explicitly deferred by Reviewer.
+- [ ] Existing public APIs remain compatible.
+- [ ] Tests pass on Python 3.11 and Python 3.12.
+- [ ] Coverage remains at or above the configured 80% threshold.
+- [ ] Control Plane Consistency Check has no new blocking finding.
+- [ ] Protected Pull Request governance passes before merge.
+- [ ] Whole-branch Reviewer result is APPROVE.
+
+Artifacts:
+- CR-2026-008
+- GitHub Issue #23
+- `registry/task-0011-execution-engine`
+- Proposed `feature/execution-engine`
+- Proposed `src/ai_os/execution/`
+- Proposed `tests/execution/`
+
+Risks:
+- Execution Engine could become an unrestricted side-effect gateway.
+- Adapter resolution could bypass Agent Runtime permissions.
+- Retry behavior could repeat destructive or non-idempotent operations.
+- Execution logic could duplicate Controller or State Machine authority.
+- Unbounded plans or retries could create runaway execution.
+
+Notes:
+- CR-2026-008 received A2 Human Approval on 2026-09-15.
+- Dependency gate verified: TASK-0004, TASK-0005, TASK-0006 and TASK-0010 are DONE.
+- Initial adapters are restricted to mock, in-memory or no-op behavior.
+- Production shell, filesystem-write, network, GitHub, credential, model-provider and deployment
+  adapters remain outside the approved scope.
+- Implementation may start only after this registry change is merged to authoritative `main`.
 
 ## Task Change Rules
 
