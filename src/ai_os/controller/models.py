@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from ai_os.agents import AgentRole, ExecutionResult
 from ai_os.tasks import TaskStatus
 from ai_os.workflow import TransitionEvent
 
 
-class ControllerStage(str, Enum):
+class ControllerStage(StrEnum):
     CREATED = "CREATED"
     PLANNING = "PLANNING"
     EXECUTING = "EXECUTING"
@@ -21,7 +21,7 @@ class ControllerStage(str, Enum):
     TERMINAL = "TERMINAL"
 
 
-class ControllerOutcome(str, Enum):
+class ControllerOutcome(StrEnum):
     COMPLETED = "COMPLETED"
     BLOCKED = "BLOCKED"
     FAILED = "FAILED"
@@ -29,7 +29,7 @@ class ControllerOutcome(str, Enum):
     CANCELLED = "CANCELLED"
 
 
-class ControllerEventType(str, Enum):
+class ControllerEventType(StrEnum):
     SESSION_STARTED = "SESSION_STARTED"
     AGENT_DISPATCHED = "AGENT_DISPATCHED"
     RESULT_RECORDED = "RESULT_RECORDED"
