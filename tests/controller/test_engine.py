@@ -1,8 +1,8 @@
 """Tests for the side-effect-free Controller orchestration slice."""
 
+import unittest
 from dataclasses import FrozenInstanceError
 from datetime import UTC, datetime
-import unittest
 
 from ai_os.agents import (
     AgentRegistry,
