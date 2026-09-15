@@ -375,7 +375,13 @@ Notes:
 - 82 tests and 85.55% branch coverage passed locally on Python 3.12.
 - GitHub Actions Run 34916909604 passed all quality gates on Python 3.11 and Python 3.12.
 - Control Plane Consistency Check has only pre-existing non-blocking warnings.
-- Fix Cycle corrected mutable-registry CLI test coupling and prevented Controller self-certification of acceptance criteria.\n- Final validation passed 83 tests with 85.55% branch coverage; Ruff, mypy and package build passed.\n- GitHub Actions Run 34917529582 passed all quality gates on Python 3.11 and Python 3.12.\n- Whole-branch Reviewer validation result: APPROVE; G4 passed with no blocking findings.\n- PR #21 was squash merged through protected main governance as\n  `ea16ecb221773608c112d2368eac0c62419b16aa`; G5 passed.\n- All acceptance criteria passed; TASK-0010 transitioned to `DONE`.
+- Fix Cycle corrected mutable-registry CLI test coupling and prevented Controller self-certification of acceptance criteria.
+- Final validation passed 83 tests with 85.55% branch coverage; Ruff, mypy and package build passed.
+- GitHub Actions Run 34917529582 passed all quality gates on Python 3.11 and Python 3.12.
+- Whole-branch Reviewer validation result: APPROVE; G4 passed with no blocking findings.
+- PR #21 was squash merged through protected main governance as
+  `ea16ecb221773608c112d2368eac0c62419b16aa`; G5 passed.
+- All acceptance criteria passed; TASK-0010 transitioned to `DONE`.
 
 ## Task Change Rules
 
