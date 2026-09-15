@@ -203,7 +203,9 @@ class ControllerEngineTests(unittest.TestCase):
                     "x",
                     dependency_states=DEPENDENCIES,
                     started_at=NOW,
-                ).events[0].event_type,
+                )
+                .events[0]
+                .event_type,
                 stage=ControllerStage.CREATED,
                 actor=AgentRole.CONTROLLER,
                 timestamp=NOW,
