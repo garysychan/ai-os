@@ -325,7 +325,7 @@ Notes:
 
 Priority: P1  
 Agent: Controller / Developer / Tester / Reviewer  
-Status: IN_PROGRESS  
+Status: REVIEW  
 Dependencies: TASK-0004, TASK-0006
 
 Description:
@@ -334,19 +334,19 @@ Tasks through the existing Agent Router, Agent Runtime and State Machine while p
 Reviewer independence, default-deny permissions and immutable execution evidence.
 
 Acceptance Criteria:
-- [ ] Canonical immutable Controller Session and event models exist.
-- [ ] Deterministic Controller Engine coordinates the approved workflow stages.
-- [ ] All Agent dispatch uses the existing Agent Router and Agent Runtime.
-- [ ] All Task state changes use the existing State Machine.
-- [ ] Immutable ordered execution traces, handoffs and evidence are preserved.
-- [ ] Tester, Reviewer and finite Fix Cycle paths are executable.
-- [ ] Reviewer independence and default-deny Agent permissions are preserved.
-- [ ] Blocked, failed, escalated and cancelled terminal outcomes are executable.
-- [ ] Core orchestration is provider-neutral and performs no uncontrolled side effects.
-- [ ] Dry-run and session inspection interfaces are available or explicitly deferred by Reviewer.
-- [ ] Existing public Agent, Task, Workflow and Governance APIs remain compatible.
-- [ ] Python 3.11 and Python 3.12 quality gates pass.
-- [ ] Control Plane Consistency Check has no new blocking finding.
+- [x] Canonical immutable Controller Session and event models exist.
+- [x] Deterministic Controller Engine coordinates the approved workflow stages.
+- [x] All Agent dispatch uses the existing Agent Router and Agent Runtime.
+- [x] All Task state changes use the existing State Machine.
+- [x] Immutable ordered execution traces, handoffs and evidence are preserved.
+- [x] Tester, Reviewer and finite Fix Cycle paths are executable.
+- [x] Reviewer independence and default-deny Agent permissions are preserved.
+- [x] Blocked, failed, escalated and cancelled terminal outcomes are executable.
+- [x] Core orchestration is provider-neutral and performs no uncontrolled side effects.
+- [x] Dry-run and session inspection interfaces are available or explicitly deferred by Reviewer.
+- [x] Existing public Agent, Task, Workflow and Governance APIs remain compatible.
+- [x] Python 3.11 and Python 3.12 quality gates pass.
+- [x] Control Plane Consistency Check has no new blocking finding.
 - [ ] Protected Pull Request governance passes before merge.
 
 Artifacts:
@@ -367,6 +367,15 @@ Notes:
 - Implementation must remain deterministic, synchronous, adapter-based and side-effect free.
 - Execution started from authoritative `main` commit
   `3575c1be83e5fd41b281e7fb6b649ae8c7333cc9`.
+- Immutable Session, Trace, Policy, finite Fix Cycle and terminal outcomes implemented.
+- Full Developer, Tester, Reviewer and Fixer lifecycle delegates exclusively through Agent Runtime.
+- Task transitions delegate exclusively through State Machine completion gates.
+- CLI commands `aios run --dry-run`, `aios session show`, and `aios session trace` implemented
+  with an explicit process-local in-memory adapter.
+- 82 tests and 85.55% branch coverage passed locally on Python 3.12.
+- GitHub Actions Run 34916909604 passed all quality gates on Python 3.11 and Python 3.12.
+- Control Plane Consistency Check has only pre-existing non-blocking warnings.
+- TASK-0010 is awaiting whole-branch Reviewer validation and protected merge evidence.
 
 ## Task Change Rules
 
