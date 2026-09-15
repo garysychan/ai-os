@@ -273,7 +273,7 @@ Notes:
 Priority: P1  
 Agent: Reviewer  
 Status: TODO  
-Dependencies: TASK-0004, TASK-0005, TASK-0006
+Dependencies: TASK-0004, TASK-0005, TASK-0006, TASK-0010
 
 Description:
 Perform end-to-end validation of the AI OS MVP.
@@ -320,6 +320,51 @@ Notes:
 - PR #5 verified required-check blocking and universal Pull Request triggering.
 - GitHub Actions Run 34697270854 passed on Python 3.11 and Python 3.12.
 - PR #5 was closed without merging its smoke-test artifact.
+
+## TASK-0010 — Install Controller Orchestration Engine
+
+Priority: P1  
+Agent: Controller / Developer / Tester / Reviewer  
+Status: TODO  
+Dependencies: TASK-0004, TASK-0006
+
+Description:
+Install a deterministic, synchronous and provider-neutral Controller that coordinates validated
+Tasks through the existing Agent Router, Agent Runtime and State Machine while preserving
+Reviewer independence, default-deny permissions and immutable execution evidence.
+
+Acceptance Criteria:
+- [ ] Canonical immutable Controller Session and event models exist.
+- [ ] Deterministic Controller Engine coordinates the approved workflow stages.
+- [ ] All Agent dispatch uses the existing Agent Router and Agent Runtime.
+- [ ] All Task state changes use the existing State Machine.
+- [ ] Immutable ordered execution traces, handoffs and evidence are preserved.
+- [ ] Tester, Reviewer and finite Fix Cycle paths are executable.
+- [ ] Reviewer independence and default-deny Agent permissions are preserved.
+- [ ] Blocked, failed, escalated and cancelled terminal outcomes are executable.
+- [ ] Core orchestration is provider-neutral and performs no uncontrolled side effects.
+- [ ] Dry-run and session inspection interfaces are available or explicitly deferred by Reviewer.
+- [ ] Existing public Agent, Task, Workflow and Governance APIs remain compatible.
+- [ ] Python 3.11 and Python 3.12 quality gates pass.
+- [ ] Control Plane Consistency Check has no new blocking finding.
+- [ ] Protected Pull Request governance passes before merge.
+
+Artifacts:
+- CR-2026-007
+- GitHub Issue #17
+- `feature/controller-orchestration-engine`
+- `src/ai_os/controller/`
+- `tests/controller/`
+
+Risks:
+- Controller could bypass specialist Agent or State Machine authority.
+- Retry logic could become unbounded or erase original findings.
+- Side-effect integration could exceed approved permissions.
+
+Notes:
+- CR-2026-007 received A2 Human Approval on 2026-09-15.
+- Dependency gate verified: TASK-0004 and TASK-0006 are DONE.
+- Implementation must remain deterministic, synchronous, adapter-based and side-effect free.
 
 ## Task Change Rules
 
