@@ -387,7 +387,7 @@ Notes:
 
 Priority: P1
 Agent: Controller / Developer / Tester / Reviewer / Fixer
-Status: TODO
+Status: IN_PROGRESS
 Dependencies: TASK-0004, TASK-0005, TASK-0006, TASK-0010
 
 Description:
@@ -439,6 +439,8 @@ Notes:
 - Production shell, filesystem-write, network, GitHub, credential, model-provider and deployment
   adapters remain outside the approved scope.
 - Implementation may start only after this registry change is merged to authoritative `main`.
+- Execution Engine implementation started from authoritative `main` commit
+  `6eed49a9d1e7950b74d9dc3a3cfbfa61b5e8b0ab`.
 
 ## Task Change Rules
 
