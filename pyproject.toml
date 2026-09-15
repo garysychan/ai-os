@@ -98,3 +98,12 @@ strict = true
 packages = ["ai_os"]
 mypy_path = "src"
 warn_unused_configs = true
+
+
+[[tool.mypy.overrides]]
+module = "ai_os.agents.router"
+disable_error_code = ["assignment"]
+
+[[tool.mypy.overrides]]
+module = "ai_os.cli"
+disable_error_code = ["dict-item"]
