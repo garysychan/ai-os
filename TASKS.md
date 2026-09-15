@@ -325,7 +325,7 @@ Notes:
 
 Priority: P1  
 Agent: Controller / Developer / Tester / Reviewer  
-Status: REVIEW  
+Status: REVIEW
 Dependencies: TASK-0004, TASK-0006
 
 Description:
