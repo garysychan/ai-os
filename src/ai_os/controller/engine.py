@@ -281,10 +281,6 @@ class ControllerEngine:
 
             completion_task = replace(
                 current,
-                acceptance_criteria=tuple(
-                    replace(item, completed=True, evidence=(review.summary,))
-                    for item in current.acceptance_criteria
-                ),
                 completion_evidence=(test_result.summary, review.summary),
             )
             session, completed = self.transition(

@@ -50,3 +50,6 @@ Developer, Tester, Reviewer, and Fixer when those paths are used. Only the Revie
 
 Completion requires all of the existing State Machine gates: acceptance criteria, successful test
 evidence, Reviewer `APPROVE`, completed dependencies, no blocking findings, and completion evidence.
+The Controller records lifecycle completion evidence, but it never marks acceptance criteria as
+complete on behalf of a specialist or Reviewer; validated criteria and their evidence must already
+be present on the Task before the transition to `DONE`.

@@ -2,8 +2,11 @@
 
 import io
 import json
+import shutil
 import unittest
 from contextlib import redirect_stdout
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from ai_os.cli import _SESSION_STORE, main
 
@@ -19,14 +22,37 @@ class ControllerCliTests(unittest.TestCase):
         return code, json.loads(output.getvalue())
 
     def test_dry_run_can_be_shown_and_traced(self) -> None:
-        code, payload = self.run_cli(
-            "run",
-            "TASK-0010",
-            "--objective",
-            "inspect lifecycle",
-            "--dry-run",
-            "--json",
-        )
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name in (
+                "CONTROL_PLANE.md",
+                "AGENTS.md",
+                "PROJECT_RULES.md",
+                "ARCHITECTURE.md",
+                "WORKFLOW.md",
+                "TASKS.md",
+            ):
+                shutil.copy(name, root / name)
+            tasks = (root / "TASKS.md").read_text(encoding="utf-8")
+            tasks = tasks.replace(
+                "## TASK-0010 — Install Controller Orchestration Engine\n\n"
+                "Priority: P1  \nAgent: Controller / Developer / Tester / Reviewer  \n"
+                "Status: REVIEW",
+                "## TASK-0010 — Install Controller Orchestration Engine\n\n"
+                "Priority: P1  \nAgent: Controller / Developer / Tester / Reviewer  \n"
+                "Status: IN_PROGRESS",
+            )
+            (root / "TASKS.md").write_text(tasks, encoding="utf-8")
+            code, payload = self.run_cli(
+                "run",
+                "TASK-0010",
+                "--objective",
+                "inspect lifecycle",
+                "--root",
+                str(root),
+                "--dry-run",
+                "--json",
+            )
         self.assertEqual(code, 0)
         self.assertEqual(payload["status"], "PASS")
         session_id = str(payload["session_id"])

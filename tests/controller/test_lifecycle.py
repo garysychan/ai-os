@@ -2,6 +2,7 @@
 
 import unittest
 from collections import deque
+from dataclasses import replace
 from datetime import UTC, datetime
 
 from ai_os.agents import (
@@ -20,6 +21,7 @@ from ai_os.agents import (
 )
 from ai_os.controller import ControllerEngine, ControllerOutcome
 from ai_os.tasks import AcceptanceCriterion, Priority, ReviewResult, Task, TaskStatus
+from ai_os.workflow import CompletionGateError
 
 NOW = datetime(2026, 9, 15, tzinfo=UTC)
 DEPENDENCIES = {"TASK-0004": TaskStatus.DONE, "TASK-0006": TaskStatus.DONE}
@@ -88,7 +90,13 @@ def task() -> Task:
         status=TaskStatus.IN_PROGRESS,
         agents=("Developer", "Tester", "Reviewer", "Fixer"),
         dependencies=tuple(DEPENDENCIES),
-        acceptance_criteria=(AcceptanceCriterion("lifecycle works"),),
+        acceptance_criteria=(
+            AcceptanceCriterion(
+                "lifecycle works",
+                completed=True,
+                evidence=("specialist supplied acceptance evidence",),
+            ),
+        ),
     )
 
 
@@ -196,6 +204,25 @@ class LifecycleTests(unittest.TestCase):
         )
         self.assertEqual(current.status, TaskStatus.IN_PROGRESS)
         self.assertEqual(session.outcome, ControllerOutcome.FAILED)
+
+    def test_controller_does_not_self_certify_acceptance_criteria(self) -> None:
+        incomplete = replace(
+            task(),
+            acceptance_criteria=(AcceptanceCriterion("specialist evidence required"),),
+        )
+        with self.assertRaisesRegex(
+            CompletionGateError,
+            "incomplete acceptance criteria",
+        ):
+            engine(
+                tests=(ExecutionStatus.SUCCESS,),
+                reviews=(ReviewResult.APPROVE,),
+            ).run_lifecycle(
+                incomplete,
+                "preserve authority boundary",
+                dependency_states=DEPENDENCIES,
+                clock=lambda: NOW,
+            )
 
 
 if __name__ == "__main__":
