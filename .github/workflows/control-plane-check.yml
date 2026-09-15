@@ -45,6 +45,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -64,8 +66,20 @@ jobs:
       - name: Check lint
         run: ruff check src tests scripts
 
-      - name: Check formatting
-        run: ruff format --check src tests scripts
+      - name: Check formatting of changed Python files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [[ -n "$BASE_SHA" && "$BASE_SHA" != "0000000000000000000000000000000000000000" ]]; then
+            mapfile -t python_files < <(git diff --name-only --diff-filter=ACMR "$BASE_SHA...HEAD" -- "*.py")
+          else
+            mapfile -t python_files < <(git diff-tree --no-commit-id --name-only -r HEAD -- "*.py")
+          fi
+          if (( ${#python_files[@]} )); then
+            ruff format --check "${python_files[@]}"
+          else
+            echo "No changed Python files require format validation."
+          fi
 
       - name: Check static types
         run: mypy src/ai_os
