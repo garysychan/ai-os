@@ -29,6 +29,12 @@ aios control-plane check --root .
 
 The coverage threshold is defined once in `pyproject.toml` and is currently 80%.
 
+The full-tree formatting command is the target state and is recommended before broad refactors.
+CI applies formatting incrementally to every added or modified Python file, preventing new format
+debt without mixing a repository-wide mechanical rewrite into TASK-0006. Full-tree lint remains
+blocking; narrowly scoped per-file exceptions in `pyproject.toml` record the pre-existing lint
+baseline and must not be expanded without review.
+
 ## CI strategy
 
 `.github/workflows/control-plane-check.yml` runs on every Pull Request, relevant pushes to
@@ -39,7 +45,7 @@ The stable job names remain `Python 3.11` and `Python 3.12` so the active
 The workflow validates, in order:
 
 1. installation and byte-code compilation;
-2. Ruff lint and formatting;
+2. full-tree Ruff lint plus Ruff formatting for every changed Python file;
 3. strict mypy type checking;
 4. the full pytest suite with branch coverage;
 5. source/wheel distribution build;
