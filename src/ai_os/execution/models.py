@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
-from ai_os.agents import AgentRole, Permission
+from ai_os.agents import AgentRole, Capability, Permission
 
 
 class StepStatus(StrEnum):
@@ -37,6 +37,7 @@ class ExecutionStep:
     adapter: str
     operation: str
     agent_role: AgentRole
+    capability: Capability
     required_permission: Permission
     inputs: tuple[tuple[str, str], ...] = ()
     idempotent: bool = False

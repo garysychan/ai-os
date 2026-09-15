@@ -5,7 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from datetime import datetime
 
-from ai_os.agents import PermissionPolicy
+from ai_os.agents import PermissionDeniedError, PermissionPolicy
+from ai_os.agents.permissions import CAPABILITY_PERMISSION
 from ai_os.tasks import Task, TaskStatus, validate_task
 
 from .errors import ExecutionPolicyError, ExecutionValidationError
@@ -63,9 +64,14 @@ class ExecutionPolicy:
             raise ExecutionValidationError("step ID, adapter, and operation must not be empty")
         if step.agent_role.value not in task.agents:
             raise ExecutionPolicyError(f"{step.agent_role.value} is not assigned to {task.task_id}")
+        canonical_permission = CAPABILITY_PERMISSION[step.capability]
+        if step.required_permission is not canonical_permission:
+            raise ExecutionPolicyError(
+                f"capability {step.capability.value} requires {canonical_permission.value}"
+            )
         try:
             self.permission_policy.require(step.agent_role, step.required_permission)
-        except Exception as error:
+        except PermissionDeniedError as error:
             raise ExecutionPolicyError(str(error)) from error
         if step.max_retries < 0:
             raise ExecutionValidationError("max_retries must not be negative")

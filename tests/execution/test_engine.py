@@ -5,7 +5,7 @@ from collections import deque
 from dataclasses import FrozenInstanceError, replace
 from datetime import UTC, datetime, timedelta
 
-from ai_os.agents import AgentRole, Permission
+from ai_os.agents import AgentRole, Capability, Permission
 from ai_os.execution import (
     AdapterRegistry,
     AdapterRegistryError,
@@ -48,6 +48,7 @@ def step(*, retries: int = 0, idempotent: bool = False) -> ExecutionStep:
         adapter="memory",
         operation="record",
         agent_role=AgentRole.DEVELOPER,
+        capability=Capability.IMPLEMENT,
         required_permission=Permission.MODIFY_CODE,
         inputs=(("value", "safe"),),
         idempotent=idempotent,
@@ -211,10 +212,21 @@ class ExecutionEngineTests(unittest.TestCase):
                 clock=lambda: NOW,
             )
         unauthorized = replace(step(), required_permission=Permission.APPROVE_REVIEW)
-        with self.assertRaisesRegex(ExecutionPolicyError, "not authorized"):
+        with self.assertRaisesRegex(ExecutionPolicyError, "requires modify_code"):
             engine.run(
                 task(),
                 plan(unauthorized),
+                context(),
+                dependency_states=DEPENDENCIES,
+                clock=lambda: NOW,
+            )
+        mismatched_capability = replace(
+            step(), capability=Capability.REVIEW, required_permission=Permission.APPROVE_REVIEW
+        )
+        with self.assertRaisesRegex(ExecutionPolicyError, "not authorized"):
+            engine.run(
+                task(),
+                plan(mismatched_capability),
                 context(),
                 dependency_states=DEPENDENCIES,
                 clock=lambda: NOW,

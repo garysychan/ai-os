@@ -15,6 +15,7 @@ from ai_os.agents import (
     AgentRole,
     AgentRouter,
     AgentRuntime,
+    Capability,
     Permission,
     canonical_agents,
 )
@@ -589,23 +590,33 @@ def _load_execution_plan(path: Path) -> ExecutionPlan:
         inputs = item.get("inputs", {})
         if not isinstance(inputs, dict):
             raise ExecutionValidationError("step inputs must be an object")
+        idempotent = item.get("idempotent", False)
+        retries = item.get("max_retries", 0)
+        if not isinstance(idempotent, bool):
+            raise ExecutionValidationError("step idempotent must be a boolean")
+        if isinstance(retries, bool) or not isinstance(retries, int):
+            raise ExecutionValidationError("step max_retries must be an integer")
         steps.append(
             ExecutionStep(
                 step_id=str(item.get("step_id", "")),
                 adapter=str(item.get("adapter", "")),
                 operation=str(item.get("operation", "")),
                 agent_role=AgentRole(str(item.get("agent_role", ""))),
+                capability=Capability(str(item.get("capability", ""))),
                 required_permission=Permission(str(item.get("required_permission", ""))),
                 inputs=tuple(sorted((str(key), str(value)) for key, value in inputs.items())),
-                idempotent=bool(item.get("idempotent", False)),
-                max_retries=int(item.get("max_retries", 0)),
+                idempotent=idempotent,
+                max_retries=retries,
             )
         )
+    max_steps = raw.get("max_steps", len(steps))
+    if isinstance(max_steps, bool) or not isinstance(max_steps, int):
+        raise ExecutionValidationError("plan max_steps must be an integer")
     return ExecutionPlan(
         plan_id=str(raw.get("plan_id", "")),
         task_id=str(raw.get("task_id", "")),
         steps=tuple(steps),
-        max_steps=int(raw.get("max_steps", len(steps))),
+        max_steps=max_steps,
     )
 
 

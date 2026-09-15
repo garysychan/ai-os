@@ -57,6 +57,7 @@ class ExecutionCliTests(unittest.TestCase):
                             "adapter": "noop",
                             "operation": "record",
                             "agent_role": "Developer",
+                            "capability": "implement",
                             "required_permission": "modify_code",
                             "inputs": {"scope": "dry-run"},
                         }
