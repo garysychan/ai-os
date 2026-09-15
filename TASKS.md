@@ -201,7 +201,7 @@ Notes:
 
 Priority: P1  
 Agent: Tester / Developer  
-Status: REVIEW  
+Status: DONE  
 Dependencies: TASK-0004
 
 Description:
@@ -228,7 +228,11 @@ Notes:
 - Python 3.11 and Python 3.12 passed all gates in Run 34914940750.
 - Existing Ruff and mypy debt is recorded as narrow file/module-level baseline exceptions;
   new files and non-baselined findings remain blocking.
-- TASK-0006 is awaiting independent Reviewer validation and protected merge evidence.
+- Reviewer validation result: APPROVE.
+- PR #18 was marked Ready for Review and squash merged into `main` as
+  `c4d26987a82402fc52bb688d11758ff340b1badf`.
+- Post-merge Control Plane Check Run 34915187938 passed on Python 3.11 and Python 3.12.
+- G4 and G5 passed; TASK-0006 transitioned to `DONE`.
 
 ## TASK-0007 — Control Plane Consistency Checker
 
