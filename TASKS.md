@@ -201,17 +201,34 @@ Notes:
 
 Priority: P1  
 Agent: Tester / Developer  
-Status: IN_PROGRESS  
+Status: REVIEW  
 Dependencies: TASK-0004
 
 Description:
 Implement automated checks for tests, linting, configuration, and other applicable quality gates.
 
 Acceptance Criteria:
-- [ ] Test command defined.
-- [ ] Lint/format checks defined where applicable.
-- [ ] CI strategy documented.
-- [ ] Failure behavior defined.
+- [x] Test command defined.
+- [x] Lint/format checks defined where applicable.
+- [x] CI strategy documented.
+- [x] Failure behavior defined.
+
+Artifacts:
+- `feature/automated-quality-gates`
+- Pull Request #18
+- `.github/workflows/control-plane-check.yml`
+- `docs/quality-gates.md`
+- GitHub Actions Run 34914940750
+
+Notes:
+- Dependency gate verified: TASK-0004 is DONE.
+- CI installs the declared development toolchain and runs compile, Ruff lint, incremental Ruff
+  formatting, strict mypy, pytest with the configured 80% branch-coverage threshold, package
+  build, bootstrap, and Control Plane consistency gates.
+- Python 3.11 and Python 3.12 passed all gates in Run 34914940750.
+- Existing Ruff and mypy debt is recorded as narrow file/module-level baseline exceptions;
+  new files and non-baselined findings remain blocking.
+- TASK-0006 is awaiting independent Reviewer validation and protected merge evidence.
 
 ## TASK-0007 — Control Plane Consistency Checker
 
