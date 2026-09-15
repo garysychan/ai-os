@@ -25,7 +25,6 @@ from ai_os.controller import (
 from ai_os.tasks import AcceptanceCriterion, Priority, Task, TaskStatus
 from ai_os.workflow import TransitionContext
 
-
 NOW = datetime(2026, 9, 15, tzinfo=UTC)
 DEPENDENCIES = {"TASK-0004": TaskStatus.DONE, "TASK-0006": TaskStatus.DONE}
 
