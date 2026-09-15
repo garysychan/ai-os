@@ -11,6 +11,7 @@ from .models import (
 )
 from .policy import ControllerPolicy
 from .session import create_session, record_result, record_transition, terminate_session
+from .store import InMemorySessionStore
 from .trace import make_trace_event
 
 __all__ = [
@@ -23,6 +24,7 @@ __all__ = [
     "ControllerSession",
     "ControllerStage",
     "ControllerValidationError",
+    "InMemorySessionStore",
     "TraceEvent",
     "create_session",
     "make_trace_event",
