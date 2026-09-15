@@ -325,7 +325,7 @@ Notes:
 
 Priority: P1  
 Agent: Controller / Developer / Tester / Reviewer  
-Status: TODO  
+Status: IN_PROGRESS  
 Dependencies: TASK-0004, TASK-0006
 
 Description:
@@ -365,6 +365,8 @@ Notes:
 - CR-2026-007 received A2 Human Approval on 2026-09-15.
 - Dependency gate verified: TASK-0004 and TASK-0006 are DONE.
 - Implementation must remain deterministic, synchronous, adapter-based and side-effect free.
+- Execution started from authoritative `main` commit
+  `3575c1be83e5fd41b281e7fb6b649ae8c7333cc9`.
 
 ## Task Change Rules
 
