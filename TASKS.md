@@ -460,6 +460,12 @@ Notes:
 - Production shell, filesystem-write, network, GitHub, credential, model-provider and deployment
   adapters remain outside the approved scope.
 - Implementation may start only after this registry change is merged to authoritative `main`.
+- Dependency gate verified: all declared dependencies are DONE.
+- Adapter Layer Core implementation started from authoritative `main` commit
+  `e13cfc369646d56d497046db80cc042809a4ab85`.
+- Initial implementation includes typed contracts, versioned Registry, default-deny policy,
+  validation, redacted immutable audit evidence, bounded results and read-only File Adapter.
+- Local validation passed 102 tests with 85.78% branch coverage; Ruff and strict mypy passed.
 - Execution Engine implementation started from authoritative `main` commit
   `6eed49a9d1e7950b74d9dc3a3cfbfa61b5e8b0ab`.
 - Tester validation passed 93 tests with 85.72% branch coverage; Ruff, strict mypy and package
@@ -478,7 +484,7 @@ Notes:
 
 Priority: P1
 Agent: Controller / Developer / Tester / Reviewer / Fixer
-Status: TODO
+Status: IN_PROGRESS
 Dependencies: TASK-0004, TASK-0005, TASK-0006, TASK-0008, TASK-0010, TASK-0011
 
 Description:
