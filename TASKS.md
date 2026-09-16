@@ -474,6 +474,62 @@ Notes:
   `3e7846fcf65649b3fc651af6d3273afa5b4d06e9`; G5 passed.
 - All acceptance criteria passed; TASK-0011 transitioned to `DONE`.
 
+## TASK-0012 — Install AI OS V2 Adapter Layer Core
+
+Priority: P1
+Agent: Controller / Developer / Tester / Reviewer / Fixer
+Status: TODO
+Dependencies: TASK-0004, TASK-0005, TASK-0006, TASK-0008, TASK-0010, TASK-0011
+
+Description:
+Install the governed Adapter Layer Core between the Execution Engine and external capabilities,
+including typed contracts, explicit registration, default-deny policy, validation, redaction,
+immutable audit evidence, and the first executable read-only File Adapter.
+
+Acceptance Criteria:
+- [ ] Canonical immutable Adapter metadata, invocation, result and audit models exist.
+- [ ] Typed Adapter protocol and explicit Registry exist.
+- [ ] Unknown Adapter names, versions and operations are denied.
+- [ ] Capability, permission, Agent assignment and Task-state authority remain enforced.
+- [ ] Risk, side-effect and idempotency classifications are validated.
+- [ ] Input/output validation and bounded result handling exist.
+- [ ] Sensitive values are redacted from audit evidence and errors.
+- [ ] Cancellation, deadlines and finite retry policy are enforceable.
+- [ ] Read-only File Adapter enforces approved roots and blocks traversal and symlink escape.
+- [ ] Read-only File Adapter cannot write, delete, chmod or access denied sensitive files.
+- [ ] Adapter results cannot directly mutate Task state.
+- [ ] CLI can list, inspect, validate and dry-run registered Adapters.
+- [ ] Existing Agent, Controller, Execution, Task, Workflow and Governance APIs remain compatible.
+- [ ] Python, Web, GitHub and SQLite Adapters are deferred to separately governed Tasks.
+- [ ] Tests pass on Python 3.11 and Python 3.12.
+- [ ] Coverage remains at or above the configured 80% threshold.
+- [ ] Control Plane Consistency Check has no new blocking finding.
+- [ ] Whole-branch Reviewer result is APPROVE.
+- [ ] Protected Pull Request governance passes before merge.
+
+Artifacts:
+- CR-2026-009
+- GitHub Issue #29
+- `registry/task-0012-adapter-layer`
+- Proposed `feature/adapter-layer`
+- Proposed `src/ai_os/adapters/`
+- Proposed `tests/adapters/`
+
+Risks:
+- Adapter registration could widen Agent permissions or bypass Execution Policy.
+- Path resolution could allow traversal, symlink escape or sensitive-file access.
+- Audit evidence could leak credentials or sensitive input values.
+- Retry or timeout handling could produce unbounded or repeated side effects.
+
+Notes:
+- CR-2026-009 received A2 Human Approval on 2026-09-16.
+- Dependency gate requires TASK-0004, TASK-0005, TASK-0006, TASK-0008, TASK-0010 and TASK-0011.
+- Core contracts and default-deny policy must land before any external Adapter.
+- Initial executable scope is restricted to a read-only File Adapter.
+- Sandboxed Python, restricted Web, GitHub read-only and SQLite persistence are deferred to
+  separately tracked Tasks and must not be silently included in this implementation.
+- Implementation may start only after this registry change is merged to authoritative `main`.
+
 ## Task Change Rules
 
 1. Do not silently delete completed tasks.
