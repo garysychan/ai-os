@@ -484,7 +484,7 @@ Notes:
 
 Priority: P1
 Agent: Controller / Developer / Tester / Reviewer / Fixer
-Status: IN_PROGRESS
+Status: REVIEW
 Dependencies: TASK-0004, TASK-0005, TASK-0006, TASK-0008, TASK-0010, TASK-0011
 
 Description:
@@ -493,25 +493,25 @@ including typed contracts, explicit registration, default-deny policy, validatio
 immutable audit evidence, and the first executable read-only File Adapter.
 
 Acceptance Criteria:
-- [ ] Canonical immutable Adapter metadata, invocation, result and audit models exist.
-- [ ] Typed Adapter protocol and explicit Registry exist.
-- [ ] Unknown Adapter names, versions and operations are denied.
-- [ ] Capability, permission, Agent assignment and Task-state authority remain enforced.
-- [ ] Risk, side-effect and idempotency classifications are validated.
-- [ ] Input/output validation and bounded result handling exist.
-- [ ] Sensitive values are redacted from audit evidence and errors.
-- [ ] Cancellation, deadlines and finite retry policy are enforceable.
-- [ ] Read-only File Adapter enforces approved roots and blocks traversal and symlink escape.
-- [ ] Read-only File Adapter cannot write, delete, chmod or access denied sensitive files.
-- [ ] Adapter results cannot directly mutate Task state.
-- [ ] CLI can list, inspect, validate and dry-run registered Adapters.
-- [ ] Existing Agent, Controller, Execution, Task, Workflow and Governance APIs remain compatible.
-- [ ] Python, Web, GitHub and SQLite Adapters are deferred to separately governed Tasks.
-- [ ] Tests pass on Python 3.11 and Python 3.12.
-- [ ] Coverage remains at or above the configured 80% threshold.
-- [ ] Control Plane Consistency Check has no new blocking finding.
-- [ ] Whole-branch Reviewer result is APPROVE.
-- [ ] Protected Pull Request governance passes before merge.
+- [x] Canonical immutable Adapter metadata, invocation, result and audit models exist.
+- [x] Typed Adapter protocol and explicit Registry exist.
+- [x] Unknown Adapter names, versions and operations are denied.
+- [x] Capability, permission, Agent assignment and Task-state authority remain enforced.
+- [x] Risk, side-effect and idempotency classifications are validated.
+- [x] Input/output validation and bounded result handling exist.
+- [x] Sensitive values are redacted from audit evidence and errors.
+- [x] Cancellation, deadlines and finite retry policy are enforceable.
+- [x] Read-only File Adapter enforces approved roots and blocks traversal and symlink escape.
+- [x] Read-only File Adapter cannot write, delete, chmod or access denied sensitive files.
+- [x] Adapter results cannot directly mutate Task state.
+- [x] CLI can list, inspect, validate and dry-run registered Adapters.
+- [x] Existing Agent, Controller, Execution, Task, Workflow and Governance APIs remain compatible.
+- [x] Python, Web, GitHub and SQLite Adapters are deferred to separately governed Tasks.
+- [x] Tests pass on Python 3.11 and Python 3.12.
+- [x] Coverage remains at or above the configured 80% threshold.
+- [x] Control Plane Consistency Check has no new blocking finding.
+- [x] Whole-branch Reviewer result is APPROVE.
+- [x] Protected Pull Request governance passes before merge.
 
 Artifacts:
 - CR-2026-009
@@ -535,6 +535,19 @@ Notes:
 - Sandboxed Python, restricted Web, GitHub read-only and SQLite persistence are deferred to
   separately tracked Tasks and must not be silently included in this implementation.
 - Implementation may start only after this registry change is merged to authoritative `main`.
+- Dependency gate verified: all declared dependencies are DONE.
+- Adapter Layer Core implementation started from authoritative `main` commit
+  `e13cfc369646d56d497046db80cc042809a4ab85`.
+- Typed contracts, versioned Registry, default-deny policy, validation, redacted immutable audit,
+  bounded results and read-only File Adapter implemented.
+- CLI commands `aios adapter list`, `describe`, `validate`, and `dry-run` implemented.
+- Tester validation passed 109 tests with 85.97% branch coverage after Fix Cycle.
+- GitHub Actions Run 35094088318 passed all gates on Python 3.11 and Python 3.12.
+- Reviewer REQUEST_CHANGES identified retry/cancellation enforcement and result redaction gaps.
+- Fix Cycle added finite attempts, non-idempotent retry denial, auditable cancellation, and
+  result evidence/error redaction.
+- Whole-branch Reviewer revalidation result: APPROVE; no unresolved blocking finding.
+- TASK-0012 transitioned to `REVIEW` pending protected Pull Request merge evidence.
 
 ## Task Change Rules
 
