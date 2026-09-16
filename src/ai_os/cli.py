@@ -55,6 +55,7 @@ from ai_os.governance import (
     parse_tasks,
     run_consistency_checks,
 )
+from ai_os.persistence import PersistenceError, SQLiteRuntimeStore, StoreConfig
 from ai_os.tasks import (
     AcceptanceCriterion,
     Priority,
@@ -223,6 +224,26 @@ def _build_parser() -> argparse.ArgumentParser:
     adapter_dry_run.add_argument("--path", type=Path, required=True)
     adapter_dry_run.add_argument("--task-id", default="TASK-0012")
     adapter_dry_run.add_argument("--json", action="store_true")
+
+    store = commands.add_parser("store", help="Manage an explicit SQLite runtime store.")
+    store_commands = store.add_subparsers(dest="store_command", required=True)
+    for command in ("init", "status", "migrate"):
+        store_command = store_commands.add_parser(command)
+        store_command.add_argument("--database", type=Path, required=True)
+        store_command.add_argument("--json", action="store_true")
+    store_session = store_commands.add_parser("session")
+    store_session.add_argument("session_id")
+    store_session.add_argument("--database", type=Path, required=True)
+    store_session.add_argument("--json", action="store_true")
+    store_execution = store_commands.add_parser("execution")
+    store_execution.add_argument("execution_id")
+    store_execution.add_argument("--database", type=Path, required=True)
+    store_execution.add_argument("--json", action="store_true")
+    store_audit = store_commands.add_parser("audit")
+    store_audit.add_argument("--invocation-id")
+    store_audit.add_argument("--limit", type=int, default=100)
+    store_audit.add_argument("--database", type=Path, required=True)
+    store_audit.add_argument("--json", action="store_true")
 
     return parser
 
@@ -1002,6 +1023,103 @@ def _run_adapter_dry_run(
     return 0
 
 
+def _store_status_payload(status: Any) -> dict[str, Any]:
+    return {
+        "database": str(status.database),
+        "initialized": status.initialized,
+        "schema_version": status.schema_version,
+        "current_schema_version": status.current_schema_version,
+        "records": {
+            "controller_sessions": status.controller_sessions,
+            "execution_plans": status.execution_plans,
+            "execution_sessions": status.execution_sessions,
+            "adapter_audit_events": status.adapter_audit_events,
+        },
+    }
+
+
+def _run_store(args: argparse.Namespace) -> int:
+    try:
+        store = SQLiteRuntimeStore(StoreConfig(database=args.database))
+        if args.store_command == "init":
+            payload = _store_status_payload(store.initialize())
+        elif args.store_command == "migrate":
+            payload = _store_status_payload(store.migrate())
+        elif args.store_command == "status":
+            payload = _store_status_payload(store.status())
+        elif args.store_command == "session":
+            controller_session = store.get_controller_session(args.session_id)
+            payload = {
+                "database": str(store.database),
+                "session_id": controller_session.session_id,
+                "task_id": controller_session.task_id,
+                "stage": controller_session.stage.value,
+                "task_status": controller_session.task_status.value,
+                "outcome": (
+                    controller_session.outcome.value if controller_session.outcome else None
+                ),
+                "events": len(controller_session.events),
+                "updated_at": controller_session.updated_at.isoformat(),
+            }
+        elif args.store_command == "execution":
+            execution_session = store.get_execution_session(args.execution_id)
+            payload = {
+                "database": str(store.database),
+                "execution_id": execution_session.execution_id,
+                "plan_id": execution_session.plan_id,
+                "task_id": execution_session.task_id,
+                "outcome": (execution_session.outcome.value if execution_session.outcome else None),
+                "events": len(execution_session.events),
+                "results": len(execution_session.results),
+                "updated_at": execution_session.updated_at.isoformat(),
+            }
+        else:
+            events = store.list_adapter_audit(
+                invocation_id=args.invocation_id,
+                limit=args.limit,
+            )
+            payload = {
+                "database": str(store.database),
+                "events": [
+                    {
+                        "sequence": event.sequence,
+                        "invocation_id": event.invocation_id,
+                        "task_id": event.task_id,
+                        "adapter": event.adapter,
+                        "operation": event.operation,
+                        "timestamp": event.timestamp.isoformat(),
+                        "status": event.status.value,
+                        "evidence": list(event.evidence),
+                    }
+                    for event in events
+                ],
+            }
+    except (OSError, PersistenceError) as error:
+        failure = {
+            "operation": "PERSISTENT RUNTIME STORE",
+            "status": "FAIL",
+            "error_type": type(error).__name__,
+            "error": str(error),
+        }
+        print(
+            json.dumps(failure, indent=2)
+            if args.json
+            else f"PERSISTENT RUNTIME STORE\nStatus: FAIL\nError: {error}"
+        )
+        return 2
+    result = {"operation": "PERSISTENT RUNTIME STORE", "status": "PASS", **payload}
+    print(
+        json.dumps(result, indent=2)
+        if args.json
+        else (
+            "PERSISTENT RUNTIME STORE\n"
+            f"Database: {store.database}\n"
+            f"Command: {args.store_command}\nStatus: PASS"
+        )
+    )
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the AI OS CLI and return a process exit code."""
     parser = _build_parser()
@@ -1098,6 +1216,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.task_id,
             as_json=args.json,
         )
+
+    if args.command == "store":
+        return _run_store(args)
 
     parser.error("Unsupported command")
     return 2
