@@ -558,7 +558,7 @@ Notes:
 
 Priority: P1
 Agent: Controller / Developer / Tester / Reviewer / Fixer
-Status: REVIEW
+Status: DONE
 Dependencies: TASK-0005, TASK-0006, TASK-0010, TASK-0011, TASK-0012
 
 Description:
@@ -623,6 +623,10 @@ Notes:
 - Final local validation passed 121 tests and 7 subtests with 85.56% branch coverage; Ruff,
   strict mypy, package build and Control Plane Consistency Check passed.
 - TASK-0013 transitioned to `REVIEW` pending protected Pull Request and Python 3.11/3.12 evidence.
+- PR #35 was squash merged through protected main governance as
+  `d1a297eff2973f17107b250edba81dd22b74c15b`; G5 passed.
+- Post-merge Control Plane Check Run 35103767140 passed on Python 3.11 and Python 3.12.
+- All acceptance criteria and required gates passed; TASK-0013 transitioned to `DONE`.
 
 ## Task Change Rules
 
