@@ -553,6 +553,63 @@ Notes:
 - Post-merge Control Plane Check Run 35094796340 passed on Python 3.11 and Python 3.12.
 - All acceptance criteria and required gates passed; TASK-0012 transitioned to `DONE`.
 
+
+## TASK-0013 — Implement SQLite Session and Execution Store
+
+Priority: P1
+Agent: Controller / Developer / Tester / Reviewer / Fixer
+Status: TODO
+Dependencies: TASK-0005, TASK-0006, TASK-0010, TASK-0011, TASK-0012
+
+Description:
+Implement a deterministic SQLite-backed Persistent Runtime Store for Controller sessions, Execution
+sessions, ordered traces, results and redacted Adapter audit evidence while preserving all existing
+Control Plane and runtime authority boundaries.
+
+Acceptance Criteria:
+- [ ] Typed persistence contracts and immutable persistence models exist.
+- [ ] Versioned SQLite schema and forward-only migration runner exist.
+- [ ] Controller sessions and ordered trace/events can be stored and restored.
+- [ ] Execution plans, sessions, attempts, events and results can be stored and restored.
+- [ ] Redacted Adapter audit evidence can be stored and queried.
+- [ ] Transactions prevent partial session writes.
+- [ ] Stable ordering and deterministic round-trip serialization are tested.
+- [ ] Unknown schema versions and corrupt records fail closed.
+- [ ] Database path and file initialization are governed and validated.
+- [ ] Secrets and unredacted sensitive values are not persisted.
+- [ ] Bounded inspection and retention/pruning interfaces exist.
+- [ ] CLI supports init, status, migrate and read-only session inspection.
+- [ ] Existing in-memory stores and public APIs remain compatible.
+- [ ] Tests pass on Python 3.11 and Python 3.12.
+- [ ] Coverage remains at or above the configured 80% threshold.
+- [ ] Control Plane Consistency Check has no new blocking finding.
+- [ ] Whole-branch Reviewer result is APPROVE.
+- [ ] Protected Pull Request governance passes before merge.
+
+Artifacts:
+- CR-2026-010
+- GitHub Issue #33
+- `registry/task-0013-persistent-runtime-store`
+- Proposed `feature/persistent-runtime-store`
+- Proposed `src/ai_os/persistence/`
+- Proposed `tests/persistence/`
+
+Risks:
+- Persistence could bypass State Machine or Agent authority.
+- Partial writes or weak migrations could corrupt runtime evidence.
+- Stored traces could leak credentials or other sensitive values.
+- SQLite concurrency or locking behavior could cause unsafe retries.
+- Database paths could overlap authoritative Control Plane files.
+
+Notes:
+- Dependency gate verified: TASK-0005, TASK-0006, TASK-0010, TASK-0011 and TASK-0012 are DONE.
+- SQLite must not become the implicit default until implementation and Reviewer validation pass.
+- In-memory stores remain the compatibility and rollback path.
+- Automatic workflow resumption, distributed storage, arbitrary SQL and background workers are
+  outside the approved scope.
+- CR-2026-010 received explicit A2 Human Approval on 2026-09-16.
+- Implementation may start only after this registry change is merged to authoritative `main`.
+
 ## Task Change Rules
 
 1. Do not silently delete completed tasks.
