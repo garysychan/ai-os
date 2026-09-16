@@ -272,7 +272,7 @@ Notes:
 
 Priority: P1  
 Agent: Reviewer  
-Status: REVIEW  
+Status: DONE  
 Dependencies: TASK-0004, TASK-0005, TASK-0006, TASK-0010, TASK-0011
 
 Description:
@@ -302,6 +302,10 @@ Notes:
 - GitHub Actions Run 35040213937 passed all gates on Python 3.11 and Python 3.12.
 - Whole-branch Reviewer validation result: APPROVE; no blocking finding and no Fix Cycle required.
 - TASK-0008 transitioned to `REVIEW` pending protected Pull Request merge evidence.
+- PR #27 was squash merged through protected main governance as
+  `0e59f2831d81961e6064b0a83c72db31e15b3bdd`; G5 passed.
+- Post-merge Control Plane Check Run 35040833006 passed on Python 3.11 and Python 3.12.
+- All acceptance criteria and required gates passed; TASK-0008 transitioned to `DONE`.
 
 ## TASK-0009 — Enforce Main Branch Governance
 
