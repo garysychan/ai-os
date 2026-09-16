@@ -1,6 +1,6 @@
 """Governed AI OS V2 Adapter Layer."""
 
-from .audit import make_audit_event, redact_pairs
+from .audit import make_audit_event, redact_pairs, redact_text
 from .errors import (
     AdapterError,
     AdapterExecutionError,
@@ -44,6 +44,7 @@ __all__ = [
     "SideEffect",
     "make_audit_event",
     "redact_pairs",
+    "redact_text",
     "validate_invocation",
     "validate_metadata",
     "validate_result",

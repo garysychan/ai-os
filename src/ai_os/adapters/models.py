@@ -51,6 +51,7 @@ class AdapterInvocation:
     inputs: tuple[tuple[str, str], ...] = ()
     deadline: datetime | None = None
     attempt: int = 1
+    max_attempts: int = 1
 
     def input_map(self) -> dict[str, str]:
         return dict(self.inputs)

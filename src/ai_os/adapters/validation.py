@@ -29,6 +29,10 @@ def validate_invocation(invocation: AdapterInvocation, now: datetime) -> None:
         raise AdapterValidationError("invocation identifiers must not be empty")
     if invocation.attempt <= 0:
         raise AdapterValidationError("attempt must be positive")
+    if invocation.max_attempts <= 0:
+        raise AdapterValidationError("max_attempts must be positive")
+    if invocation.attempt > invocation.max_attempts:
+        raise AdapterValidationError("attempt exceeds finite attempt limit")
     if len(dict(invocation.inputs)) != len(invocation.inputs):
         raise AdapterValidationError("input keys must be unique")
     if invocation.deadline is not None:

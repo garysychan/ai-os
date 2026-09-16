@@ -21,7 +21,9 @@ from ai_os.adapters import (
     AdapterValidationError,
     ReadOnlyFileAdapter,
     SideEffect,
+    make_audit_event,
     redact_pairs,
+    redact_text,
     validate_invocation,
     validate_metadata,
     validate_result,
@@ -183,6 +185,66 @@ class AdapterLayerTests(unittest.TestCase):
         self.assertEqual(
             redact_pairs((("Authorization", "Bearer x"), ("path", "/safe"))),
             (("Authorization", "[REDACTED]"), ("path", "/safe")),
+        )
+        self.assertEqual(
+            redact_text("request failed token=abc123 password:open"),
+            "request failed token=[REDACTED] password=[REDACTED]",
+        )
+
+    def test_cancellation_is_audited_without_invoking_adapter(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / "input.txt"
+            target.write_text("safe", encoding="utf-8")
+            service = AdapterService(AdapterRegistry((ReadOnlyFileAdapter((root,)),)))
+            result, audit = service.execute(
+                task(), invocation(target), clock=lambda: NOW, cancelled=lambda: True
+            )
+            self.assertEqual(result.status, AdapterStatus.CANCELLED)
+            self.assertEqual(audit.status, AdapterStatus.CANCELLED)
+            self.assertEqual(audit.evidence[-1], "cancelled=true")
+
+    def test_retry_budget_requires_idempotent_operation(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / "input.txt"
+            target.write_text("safe", encoding="utf-8")
+            service = AdapterService(AdapterRegistry((ReadOnlyFileAdapter((root,)),)))
+            result, _ = service.execute(
+                task(), replace(invocation(target), attempt=2, max_attempts=2), clock=lambda: NOW
+            )
+            self.assertEqual(result.status, AdapterStatus.SUCCESS)
+
+            class NonIdempotentAdapter:
+                metadata = replace(
+                    ReadOnlyFileAdapter((root,)).metadata,
+                    idempotent_operations=frozenset(),
+                )
+
+                def invoke(self, item: AdapterInvocation) -> AdapterResult:
+                    return AdapterResult(item.invocation_id, AdapterStatus.SUCCESS, "unsafe")
+
+            denied = AdapterService(AdapterRegistry((NonIdempotentAdapter(),)))
+            with self.assertRaisesRegex(AdapterPolicyError, "non-idempotent"):
+                denied.execute(
+                    task(),
+                    replace(invocation(target), attempt=2, max_attempts=2),
+                    clock=lambda: NOW,
+                )
+
+    def test_result_evidence_and_errors_are_redacted_in_audit(self) -> None:
+        item = replace(invocation(Path("/tmp/input")), inputs=())
+        result = AdapterResult(
+            item.invocation_id,
+            AdapterStatus.FAILED,
+            "failed",
+            evidence=("token=abc123",),
+            errors=("password:open",),
+        )
+        audit = make_audit_event(1, item, result, NOW)
+        self.assertEqual(
+            audit.evidence,
+            ("token=[REDACTED]", "error=password=[REDACTED]"),
         )
 
 

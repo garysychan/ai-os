@@ -44,5 +44,10 @@ class AdapterPolicy:
             raise AdapterPolicyError("invocation does not match resolved Adapter")
         if invocation.operation not in metadata.operations:
             raise AdapterPolicyError("operation is not declared by Adapter")
+        if (
+            invocation.max_attempts > 1
+            and invocation.operation not in metadata.idempotent_operations
+        ):
+            raise AdapterPolicyError("non-idempotent Adapter operations cannot be retried")
         if metadata.side_effect is SideEffect.WRITE_EXTERNAL:
             raise AdapterPolicyError("write-capable Adapters are not authorized")

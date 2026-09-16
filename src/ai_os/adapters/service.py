@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from ai_os.tasks import Task
 
 from .audit import make_audit_event
-from .models import AdapterAuditEvent, AdapterInvocation, AdapterResult
+from .models import AdapterAuditEvent, AdapterInvocation, AdapterResult, AdapterStatus
 from .policy import AdapterPolicy
 from .registry import AdapterRegistry
 from .validation import validate_result
@@ -29,12 +29,21 @@ class AdapterService:
         invocation: AdapterInvocation,
         *,
         clock: Callable[[], datetime] | None = None,
+        cancelled: Callable[[], bool] | None = None,
     ) -> tuple[AdapterResult, AdapterAuditEvent]:
         now = (clock or (lambda: datetime.now(UTC)))()
         adapter = self.registry.resolve(
             invocation.adapter, invocation.version, invocation.operation
         )
         self.policy.authorize(task, adapter.metadata, invocation, now)
+        if cancelled is not None and cancelled():
+            result = AdapterResult(
+                invocation_id=invocation.invocation_id,
+                status=AdapterStatus.CANCELLED,
+                summary="Adapter invocation cancelled before execution",
+                evidence=("cancelled=true",),
+            )
+            return result, make_audit_event(1, invocation, result, now)
         result = adapter.invoke(invocation)
         validate_result(result, invocation, self.max_output_bytes)
         return result, make_audit_event(1, invocation, result, now)
