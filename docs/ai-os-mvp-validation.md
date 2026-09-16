@@ -24,6 +24,7 @@ deployment, and model-provider adapters remain outside this task.
 ## Validation evidence
 
 - Python 3.12 local validation: 96 tests passed.
+- GitHub Actions Run 35040213937 passed all gates on Python 3.11 and Python 3.12.
 - Branch coverage: 85.72%, above the configured 80% gate.
 - Ruff lint and changed-file format checks passed.
 - Strict mypy validation passed for 47 source files.
@@ -36,6 +37,6 @@ This validation introduced no blocking finding and does not modify Control Plane
 
 ## Current gate
 
-Implementation and local Tester validation are complete. `TASK-0008` remains `IN_PROGRESS` until
-the branch passes Python 3.11 and Python 3.12 GitHub checks and receives Whole-branch Reviewer
-validation. It must not transition to `DONE` before protected Pull Request merge evidence exists.
+Implementation, Tester validation, Python 3.11/3.12 checks and Whole-branch Reviewer validation
+are complete. Reviewer result: `APPROVE`; no Fix Cycle was required. `TASK-0008` is in
+`REVIEW` and must not transition to `DONE` before protected Pull Request merge evidence exists.
