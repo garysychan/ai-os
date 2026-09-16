@@ -448,7 +448,10 @@ Notes:
   every step to the canonical mapping and added strict CLI plan-field validation.
 - Reviewer revalidation result: APPROVE; no unresolved blocking finding.
 - Control Plane Consistency Check has only pre-existing non-blocking warnings.
-- TASK-0011 transitioned to `REVIEW` pending protected Pull Request merge evidence.\n- PR #25 passed protected main governance and was squash merged as\n  `3e7846fcf65649b3fc651af6d3273afa5b4d06e9`; G5 passed.\n- All acceptance criteria passed; TASK-0011 transitioned to `DONE`.
+- TASK-0011 transitioned to `REVIEW` pending protected Pull Request merge evidence.
+- PR #25 passed protected main governance and was squash merged as
+  `3e7846fcf65649b3fc651af6d3273afa5b4d06e9`; G5 passed.
+- All acceptance criteria passed; TASK-0011 transitioned to `DONE`.
 
 ## Task Change Rules
 
