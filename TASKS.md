@@ -607,7 +607,8 @@ Notes:
 - In-memory stores remain the compatibility and rollback path.
 - Automatic workflow resumption, distributed storage, arbitrary SQL and background workers are
   outside the approved scope.
-- Implementation is blocked pending explicit A2 Human Approval: `APPROVE CR-2026-010`.
+- CR-2026-010 received explicit A2 Human Approval on 2026-09-16.
+- Implementation may start only after this registry change is merged to authoritative `main`.
 
 ## Task Change Rules
 
