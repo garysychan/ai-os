@@ -558,7 +558,7 @@ Notes:
 
 Priority: P1
 Agent: Controller / Developer / Tester / Reviewer / Fixer
-Status: TODO
+Status: IN_PROGRESS
 Dependencies: TASK-0005, TASK-0006, TASK-0010, TASK-0011, TASK-0012
 
 Description:
@@ -609,6 +609,13 @@ Notes:
   outside the approved scope.
 - CR-2026-010 received explicit A2 Human Approval on 2026-09-16.
 - Implementation may start only after this registry change is merged to authoritative `main`.
+- Implementation started from authoritative `main` commit
+  `fa2c6e35db5168235f2f808a3456bcaa62ba75d5` on `feature/persistent-runtime-store`.
+- SQLite persistence contracts, versioned schema/migrations, deterministic codecs, Controller and
+  Execution repositories, redacted Adapter audit storage, bounded pruning and CLI inspection are
+  implemented without changing the in-memory defaults.
+- Local Tester validation passed 120 tests and 7 subtests with 85.35% branch coverage; Ruff,
+  strict mypy, package build and Control Plane Consistency Check passed.
 
 ## Task Change Rules
 
