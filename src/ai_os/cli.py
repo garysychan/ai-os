@@ -10,6 +10,15 @@ from pathlib import Path
 from typing import Any
 
 from ai_os import __version__
+from ai_os.adapters import (
+    AdapterError,
+    AdapterInvocation,
+    AdapterService,
+    ReadOnlyFileAdapter,
+)
+from ai_os.adapters import (
+    AdapterRegistry as CoreAdapterRegistry,
+)
 from ai_os.agents import (
     AgentRegistry,
     AgentRole,
@@ -191,6 +200,29 @@ def _build_parser() -> argparse.ArgumentParser:
         inspect = execution_commands.add_parser(command)
         inspect.add_argument("execution_id")
         inspect.add_argument("--json", action="store_true")
+
+    adapter = commands.add_parser("adapter", help="Inspect and dry-run governed Adapters.")
+    adapter_commands = adapter.add_subparsers(dest="adapter_command", required=True)
+    adapter_list = adapter_commands.add_parser("list")
+    adapter_list.add_argument("--root", type=Path, default=Path.cwd())
+    adapter_list.add_argument("--json", action="store_true")
+    adapter_describe = adapter_commands.add_parser("describe")
+    adapter_describe.add_argument("name")
+    adapter_describe.add_argument("--version", default="1")
+    adapter_describe.add_argument("--root", type=Path, default=Path.cwd())
+    adapter_describe.add_argument("--json", action="store_true")
+    adapter_validate = adapter_commands.add_parser("validate")
+    adapter_validate.add_argument("name")
+    adapter_validate.add_argument("--version", default="1")
+    adapter_validate.add_argument("--root", type=Path, default=Path.cwd())
+    adapter_validate.add_argument("--json", action="store_true")
+    adapter_dry_run = adapter_commands.add_parser("dry-run")
+    adapter_dry_run.add_argument("name")
+    adapter_dry_run.add_argument("--version", default="1")
+    adapter_dry_run.add_argument("--root", type=Path, required=True)
+    adapter_dry_run.add_argument("--path", type=Path, required=True)
+    adapter_dry_run.add_argument("--task-id", default="TASK-0012")
+    adapter_dry_run.add_argument("--json", action="store_true")
 
     return parser
 
@@ -834,6 +866,142 @@ def _run_agent_describe(role_name: str, *, as_json: bool) -> int:
     return 0
 
 
+def _core_adapter_registry(root: Path) -> CoreAdapterRegistry:
+    resolved = root.expanduser().resolve(strict=True)
+    return CoreAdapterRegistry((ReadOnlyFileAdapter((resolved,)),))
+
+
+def _adapter_metadata_payload(metadata: Any) -> dict[str, Any]:
+    return {
+        "name": metadata.name,
+        "version": metadata.version,
+        "operations": sorted(metadata.operations),
+        "risk": metadata.risk.value,
+        "side_effect": metadata.side_effect.value,
+        "idempotent_operations": sorted(metadata.idempotent_operations),
+    }
+
+
+def _run_adapter_inspect(
+    command: str,
+    root: Path,
+    *,
+    name: str | None = None,
+    version: str = "1",
+    as_json: bool,
+) -> int:
+    try:
+        registry = _core_adapter_registry(root)
+        if command == "list":
+            adapters = [_adapter_metadata_payload(item) for item in registry.list_metadata()]
+        else:
+            resolved = registry.resolve(name or "", version, "read_text")
+            adapters = [_adapter_metadata_payload(resolved.metadata)]
+    except (OSError, AdapterError) as error:
+        payload = {
+            "operation": f"ADAPTER {command.upper()}",
+            "status": "FAIL",
+            "error_type": type(error).__name__,
+            "error": str(error),
+        }
+        print(
+            json.dumps(payload, indent=2)
+            if as_json
+            else f"ADAPTER {command.upper()}\nStatus: FAIL\nError: {error}"
+        )
+        return 2
+
+    payload = {
+        "operation": f"ADAPTER {command.upper()}",
+        "status": "PASS",
+        "adapters": adapters,
+    }
+    if as_json:
+        print(json.dumps(payload, indent=2))
+    else:
+        print(f"ADAPTER {command.upper()}")
+        for item in adapters:
+            print(
+                f"{item['name']}@{item['version']}: "
+                + ", ".join(item["operations"])
+                + f" [{item['side_effect']}]"
+            )
+        print("Status: PASS")
+    return 0
+
+
+def _run_adapter_dry_run(
+    name: str,
+    version: str,
+    root: Path,
+    path: Path,
+    task_id: str,
+    *,
+    as_json: bool,
+) -> int:
+    try:
+        registry = _core_adapter_registry(root)
+        requested = path.expanduser().resolve(strict=True)
+        invocation = AdapterInvocation(
+            invocation_id=f"dry-run-{task_id}",
+            task_id=task_id,
+            adapter=name,
+            version=version,
+            operation="read_text",
+            agent_role=AgentRole.DEVELOPER,
+            capability=Capability.IMPLEMENT,
+            required_permission=Permission.MODIFY_CODE,
+            inputs=(("path", str(requested)),),
+        )
+        task = Task(
+            task_id=task_id,
+            title="Adapter CLI dry-run",
+            priority=Priority.P2,
+            status=TaskStatus.IN_PROGRESS,
+            agents=(AgentRole.DEVELOPER.value,),
+            dependencies=(),
+            acceptance_criteria=(AcceptanceCriterion("dry-run is governed"),),
+        )
+        result, audit = AdapterService(registry).execute(task, invocation)
+        outputs = dict(result.outputs)
+    except (OSError, AdapterError, TaskError) as error:
+        payload = {
+            "operation": "ADAPTER DRY-RUN",
+            "status": "FAIL",
+            "error_type": type(error).__name__,
+            "error": str(error),
+        }
+        print(
+            json.dumps(payload, indent=2)
+            if as_json
+            else f"ADAPTER DRY-RUN\nStatus: FAIL\nError: {error}"
+        )
+        return 2
+
+    payload = {
+        "operation": "ADAPTER DRY-RUN",
+        "status": "PASS",
+        "adapter": f"{name}@{version}",
+        "task_id": task_id,
+        "path": outputs.get("path"),
+        "content_bytes": len(outputs.get("content", "").encode()),
+        "audit_sequence": audit.sequence,
+        "content_returned": False,
+    }
+    print(
+        json.dumps(payload, indent=2)
+        if as_json
+        else (
+            "ADAPTER DRY-RUN\n"
+            f"Adapter: {payload['adapter']}\n"
+            f"Path: {payload['path']}\n"
+            f"Bytes: {payload['content_bytes']}\n"
+            "Content Returned: no\nStatus: PASS"
+        )
+    )
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the AI OS CLI and return a process exit code."""
     parser = _build_parser()
@@ -909,6 +1077,25 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _run_execution_inspect(
             args.execution_id,
             trace_only=args.execution_command == "trace",
+            as_json=args.json,
+        )
+
+    if args.command == "adapter" and args.adapter_command in {"list", "describe", "validate"}:
+        return _run_adapter_inspect(
+            args.adapter_command,
+            args.root,
+            name=getattr(args, "name", None),
+            version=getattr(args, "version", "1"),
+            as_json=args.json,
+        )
+
+    if args.command == "adapter" and args.adapter_command == "dry-run":
+        return _run_adapter_dry_run(
+            args.name,
+            args.version,
+            args.root,
+            args.path,
+            args.task_id,
             as_json=args.json,
         )
 
