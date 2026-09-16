@@ -387,7 +387,7 @@ Notes:
 
 Priority: P1
 Agent: Controller / Developer / Tester / Reviewer / Fixer
-Status: TODO
+Status: REVIEW
 Dependencies: TASK-0004, TASK-0005, TASK-0006, TASK-0010
 
 Description:
@@ -396,26 +396,26 @@ typed plans through explicitly registered safe adapters while preserving Agent R
 Machine, Reviewer and Control Plane authority boundaries.
 
 Acceptance Criteria:
-- [ ] Canonical immutable Execution Plan, Step, Session, Event and Result models exist.
-- [ ] Deterministic synchronous Execution Engine exists.
-- [ ] Typed port and adapter contracts exist.
-- [ ] Adapter Registry uses explicit, unambiguous and default-deny resolution.
-- [ ] Capability, permission, task-assignment and budget policies are enforced.
-- [ ] Step count, retry and cancellation behavior are finite and testable.
-- [ ] Non-idempotent operations are not retried by default.
-- [ ] Immutable ordered traces preserve every attempt and outcome.
-- [ ] Completed, blocked, failed, escalated and cancelled outcomes are executable.
-- [ ] Results return to Controller without direct Task mutation.
-- [ ] Reviewer independence and State Machine authority are preserved.
-- [ ] Core execution remains provider-neutral and side-effect free.
-- [ ] Only mock, in-memory or no-op adapters are installed initially.
-- [ ] CLI dry-run, plan validation and inspection are available or explicitly deferred by Reviewer.
-- [ ] Existing public APIs remain compatible.
-- [ ] Tests pass on Python 3.11 and Python 3.12.
-- [ ] Coverage remains at or above the configured 80% threshold.
-- [ ] Control Plane Consistency Check has no new blocking finding.
+- [x] Canonical immutable Execution Plan, Step, Session, Event and Result models exist.
+- [x] Deterministic synchronous Execution Engine exists.
+- [x] Typed port and adapter contracts exist.
+- [x] Adapter Registry uses explicit, unambiguous and default-deny resolution.
+- [x] Capability, permission, task-assignment and budget policies are enforced.
+- [x] Step count, retry and cancellation behavior are finite and testable.
+- [x] Non-idempotent operations are not retried by default.
+- [x] Immutable ordered traces preserve every attempt and outcome.
+- [x] Completed, blocked, failed, escalated and cancelled outcomes are executable.
+- [x] Results return to Controller without direct Task mutation.
+- [x] Reviewer independence and State Machine authority are preserved.
+- [x] Core execution remains provider-neutral and side-effect free.
+- [x] Only mock, in-memory or no-op adapters are installed initially.
+- [x] CLI dry-run, plan validation and inspection are available or explicitly deferred by Reviewer.
+- [x] Existing public APIs remain compatible.
+- [x] Tests pass on Python 3.11 and Python 3.12.
+- [x] Coverage remains at or above the configured 80% threshold.
+- [x] Control Plane Consistency Check has no new blocking finding.
 - [ ] Protected Pull Request governance passes before merge.
-- [ ] Whole-branch Reviewer result is APPROVE.
+- [x] Whole-branch Reviewer result is APPROVE.
 
 Artifacts:
 - CR-2026-008
@@ -439,6 +439,16 @@ Notes:
 - Production shell, filesystem-write, network, GitHub, credential, model-provider and deployment
   adapters remain outside the approved scope.
 - Implementation may start only after this registry change is merged to authoritative `main`.
+- Execution Engine implementation started from authoritative `main` commit
+  `6eed49a9d1e7950b74d9dc3a3cfbfa61b5e8b0ab`.
+- Tester validation passed 93 tests with 85.72% branch coverage; Ruff, strict mypy and package
+  build passed.
+- GitHub Actions Run 35037923932 passed all quality gates on Python 3.11 and Python 3.12.
+- Reviewer REQUEST_CHANGES identified a capability-to-permission binding gap; Fix Cycle bound
+  every step to the canonical mapping and added strict CLI plan-field validation.
+- Reviewer revalidation result: APPROVE; no unresolved blocking finding.
+- Control Plane Consistency Check has only pre-existing non-blocking warnings.
+- TASK-0011 transitioned to `REVIEW` pending protected Pull Request merge evidence.
 
 ## Task Change Rules
 

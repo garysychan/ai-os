@@ -1,0 +1,124 @@
+"""Deterministic synchronous Execution Engine."""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Mapping
+from datetime import UTC, datetime
+
+from ai_os.tasks import Task, TaskStatus
+
+from .context import append_event, create_session, finish_session, record_result
+from .errors import ExecutionValidationError
+from .models import (
+    ExecutionContext,
+    ExecutionEventType,
+    ExecutionOutcome,
+    ExecutionPlan,
+    ExecutionResult,
+    ExecutionSession,
+    StepResult,
+    StepStatus,
+)
+from .policy import ExecutionPolicy
+from .registry import AdapterRegistry
+
+
+class ExecutionEngine:
+    """Execute finite plans through explicitly registered side-effect-free adapters."""
+
+    def __init__(self, registry: AdapterRegistry, policy: ExecutionPolicy | None = None) -> None:
+        self.registry = registry
+        self.policy = policy or ExecutionPolicy()
+
+    def run(
+        self,
+        task: Task,
+        plan: ExecutionPlan,
+        context: ExecutionContext,
+        *,
+        dependency_states: Mapping[str, TaskStatus],
+        clock: Callable[[], datetime] | None = None,
+        cancelled: Callable[[], bool] | None = None,
+    ) -> tuple[ExecutionSession, ExecutionResult]:
+        now = clock or (lambda: datetime.now(UTC))
+        is_cancelled = cancelled or (lambda: False)
+        started_at = now()
+        self.policy.validate_start(task, plan, context, dependency_states, started_at)
+        for step in plan.steps:
+            adapter = self.registry.resolve(step.adapter, step.operation)
+            self.policy.validate_adapter(adapter)
+
+        session = create_session(plan, context, started_at)
+        for step in plan.steps:
+            if is_cancelled():
+                return self._finish(
+                    session, ExecutionOutcome.CANCELLED, now(), "execution cancelled"
+                )
+            if context.deadline is not None and now() >= context.deadline:
+                return self._finish(
+                    session,
+                    ExecutionOutcome.ESCALATED,
+                    now(),
+                    "execution deadline exhausted",
+                    ("deadline exceeded before next step",),
+                )
+            adapter = self.registry.resolve(step.adapter, step.operation)
+            for attempt in range(1, step.max_retries + 2):
+                session = append_event(
+                    session,
+                    ExecutionEventType.STEP_STARTED,
+                    now(),
+                    f"execute {step.adapter}.{step.operation}",
+                    step_id=step.step_id,
+                    attempt=attempt,
+                )
+                try:
+                    result = adapter.execute(step, context, attempt)
+                except Exception as error:
+                    result = StepResult(
+                        step_id=step.step_id,
+                        attempt=attempt,
+                        status=StepStatus.FAILED,
+                        summary=f"adapter error: {type(error).__name__}",
+                        errors=(str(error),),
+                    )
+                self._validate_result(step.step_id, attempt, result)
+                session = record_result(session, result, now())
+                if result.status is StepStatus.SUCCESS:
+                    break
+                if result.status is StepStatus.FAILED and attempt <= step.max_retries:
+                    continue
+                outcome = {
+                    StepStatus.BLOCKED: ExecutionOutcome.BLOCKED,
+                    StepStatus.FAILED: ExecutionOutcome.FAILED,
+                    StepStatus.ESCALATED: ExecutionOutcome.ESCALATED,
+                }[result.status]
+                findings = result.errors or (result.summary,)
+                return self._finish(session, outcome, now(), result.summary, findings)
+        return self._finish(session, ExecutionOutcome.COMPLETED, now(), "all steps completed")
+
+    @staticmethod
+    def _validate_result(step_id: str, attempt: int, result: StepResult) -> None:
+        if result.step_id != step_id or result.attempt != attempt:
+            raise ExecutionValidationError("adapter result identity does not match dispatch")
+        if not result.summary.strip():
+            raise ExecutionValidationError("adapter result summary must not be empty")
+
+    @staticmethod
+    def _finish(
+        session: ExecutionSession,
+        outcome: ExecutionOutcome,
+        timestamp: datetime,
+        reason: str,
+        findings: tuple[str, ...] = (),
+    ) -> tuple[ExecutionSession, ExecutionResult]:
+        terminal = finish_session(session, outcome, timestamp, reason, findings)
+        evidence = tuple(item for result in terminal.results for item in result.evidence)
+        return terminal, ExecutionResult(
+            execution_id=terminal.execution_id,
+            task_id=terminal.task_id,
+            outcome=outcome,
+            step_results=terminal.results,
+            evidence=evidence,
+            findings=findings,
+        )

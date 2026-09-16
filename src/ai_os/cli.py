@@ -15,6 +15,8 @@ from ai_os.agents import (
     AgentRole,
     AgentRouter,
     AgentRuntime,
+    Capability,
+    Permission,
     canonical_agents,
 )
 from ai_os.controller import (
@@ -22,6 +24,17 @@ from ai_os.controller import (
     ControllerError,
     ControllerValidationError,
     InMemorySessionStore,
+)
+from ai_os.execution import (
+    AdapterRegistry,
+    ExecutionContext,
+    ExecutionEngine,
+    ExecutionEngineError,
+    ExecutionPlan,
+    ExecutionStep,
+    ExecutionValidationError,
+    InMemoryExecutionStore,
+    NoOpAdapter,
 )
 from ai_os.governance import (
     ConsistencyReport,
@@ -44,6 +57,7 @@ from ai_os.tasks import (
 from ai_os.workflow import ALLOWED_TRANSITIONS
 
 _SESSION_STORE = InMemorySessionStore()
+_EXECUTION_STORE = InMemoryExecutionStore()
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -156,6 +170,26 @@ def _build_parser() -> argparse.ArgumentParser:
     for command in ("show", "trace"):
         inspect = session_commands.add_parser(command)
         inspect.add_argument("session_id")
+        inspect.add_argument("--json", action="store_true")
+
+    execute = commands.add_parser("execute", help="Execute an approved plan through safe adapters.")
+    execute.add_argument("task_id")
+    execute.add_argument("--plan", type=Path, required=True)
+    execute.add_argument("--root", type=Path, default=Path.cwd())
+    execute.add_argument("--dry-run", action="store_true", required=True)
+    execute.add_argument("--json", action="store_true")
+
+    execution = commands.add_parser("execution", help="Validate and inspect execution sessions.")
+    execution_commands = execution.add_subparsers(dest="execution_command", required=True)
+    execution_validate = execution_commands.add_parser("validate")
+    execution_validate.add_argument("plan", type=Path)
+    execution_validate.add_argument("--root", type=Path, default=Path.cwd())
+    execution_validate.add_argument("--json", action="store_true")
+    execution_adapters = execution_commands.add_parser("adapters")
+    execution_adapters.add_argument("--json", action="store_true")
+    for command in ("show", "trace"):
+        inspect = execution_commands.add_parser(command)
+        inspect.add_argument("execution_id")
         inspect.add_argument("--json", action="store_true")
 
     return parser
@@ -545,6 +579,213 @@ def _run_session_inspect(session_id: str, *, trace_only: bool, as_json: bool) ->
     return 0
 
 
+def _load_execution_plan(path: Path) -> ExecutionPlan:
+    raw = json.loads(path.expanduser().resolve().read_text(encoding="utf-8"))
+    if not isinstance(raw, dict) or not isinstance(raw.get("steps"), list):
+        raise ExecutionValidationError("plan JSON must be an object with a steps array")
+    steps = []
+    for item in raw["steps"]:
+        if not isinstance(item, dict):
+            raise ExecutionValidationError("each execution step must be an object")
+        inputs = item.get("inputs", {})
+        if not isinstance(inputs, dict):
+            raise ExecutionValidationError("step inputs must be an object")
+        idempotent = item.get("idempotent", False)
+        retries = item.get("max_retries", 0)
+        if not isinstance(idempotent, bool):
+            raise ExecutionValidationError("step idempotent must be a boolean")
+        if isinstance(retries, bool) or not isinstance(retries, int):
+            raise ExecutionValidationError("step max_retries must be an integer")
+        steps.append(
+            ExecutionStep(
+                step_id=str(item.get("step_id", "")),
+                adapter=str(item.get("adapter", "")),
+                operation=str(item.get("operation", "")),
+                agent_role=AgentRole(str(item.get("agent_role", ""))),
+                capability=Capability(str(item.get("capability", ""))),
+                required_permission=Permission(str(item.get("required_permission", ""))),
+                inputs=tuple(sorted((str(key), str(value)) for key, value in inputs.items())),
+                idempotent=idempotent,
+                max_retries=retries,
+            )
+        )
+    max_steps = raw.get("max_steps", len(steps))
+    if isinstance(max_steps, bool) or not isinstance(max_steps, int):
+        raise ExecutionValidationError("plan max_steps must be an integer")
+    return ExecutionPlan(
+        plan_id=str(raw.get("plan_id", "")),
+        task_id=str(raw.get("task_id", "")),
+        steps=tuple(steps),
+        max_steps=max_steps,
+    )
+
+
+def _safe_execution_registry(plan: ExecutionPlan) -> AdapterRegistry:
+    operations: dict[str, set[str]] = {}
+    for step in plan.steps:
+        operations.setdefault(step.adapter, set()).add(step.operation)
+    return AdapterRegistry(
+        NoOpAdapter(name, frozenset(items)) for name, items in sorted(operations.items())
+    )
+
+
+def _execution_session_payload(execution_id: str, *, trace_only: bool = False) -> dict[str, Any]:
+    session = _EXECUTION_STORE.get(execution_id)
+    events = [
+        {
+            "sequence": event.sequence,
+            "type": event.event_type.value,
+            "timestamp": event.timestamp.isoformat(),
+            "reason": event.reason,
+            "step_id": event.step_id,
+            "attempt": event.attempt,
+            "evidence": list(event.evidence),
+        }
+        for event in session.events
+    ]
+    if trace_only:
+        return {"execution_id": execution_id, "events": events}
+    return {
+        "execution_id": execution_id,
+        "plan_id": session.plan_id,
+        "task_id": session.task_id,
+        "controller_session_id": session.controller_session_id,
+        "outcome": session.outcome.value if session.outcome else None,
+        "results": len(session.results),
+        "events": events,
+    }
+
+
+def _execution_inputs(root: Path, plan: ExecutionPlan) -> tuple[Task, dict[str, TaskStatus]]:
+    control_plane = load_control_plane(root)
+    definition = control_plane.tasks[plan.task_id]
+    task = _runtime_task(definition)
+    dependencies = {
+        item: TaskStatus(control_plane.tasks[item].status or "TODO") for item in task.dependencies
+    }
+    return task, dependencies
+
+
+def _run_execution_dry_run(
+    task_id: str,
+    plan_path: Path,
+    root: Path,
+    *,
+    as_json: bool,
+) -> int:
+    try:
+        plan = _load_execution_plan(plan_path)
+        if plan.task_id != task_id:
+            raise ExecutionValidationError("CLI task ID does not match plan task_id")
+        task, dependencies = _execution_inputs(root, plan)
+        session, result = ExecutionEngine(_safe_execution_registry(plan)).run(
+            task,
+            plan,
+            ExecutionContext(
+                controller_session_id="cli-dry-run",
+                objective="validate and dry-run approved execution plan",
+                approval_evidence=("dry-run: no external side effects authorized",),
+            ),
+            dependency_states=dependencies,
+        )
+        _EXECUTION_STORE.save(session)
+        payload = {
+            "operation": "EXECUTION DRY RUN",
+            "status": "PASS",
+            "side_effects": "NONE",
+            **_execution_session_payload(session.execution_id),
+            "result": result.outcome.value,
+        }
+    except (
+        OSError,
+        UnicodeError,
+        json.JSONDecodeError,
+        KeyError,
+        ValueError,
+        ControlPlaneError,
+        ExecutionEngineError,
+    ) as error:
+        payload = {"operation": "EXECUTION DRY RUN", "status": "FAIL", "error": str(error)}
+        print(
+            json.dumps(payload, indent=2)
+            if as_json
+            else f"EXECUTION DRY RUN\nStatus: FAIL\nError: {error}"
+        )
+        return 2
+    print(
+        json.dumps(payload, indent=2)
+        if as_json
+        else (
+            "EXECUTION DRY RUN\n"
+            f"Execution: {session.execution_id}\n"
+            "Side Effects: NONE\nStatus: PASS"
+        )
+    )
+    return 0
+
+
+def _run_execution_validate(plan_path: Path, root: Path, *, as_json: bool) -> int:
+    try:
+        plan = _load_execution_plan(plan_path)
+        task, dependencies = _execution_inputs(root, plan)
+        now = datetime.now(UTC)
+        context = ExecutionContext("cli-validation", "validate execution plan")
+        engine = ExecutionEngine(_safe_execution_registry(plan))
+        engine.policy.validate_start(task, plan, context, dependencies, now)
+        for step in plan.steps:
+            engine.policy.validate_adapter(engine.registry.resolve(step.adapter, step.operation))
+        payload = {
+            "operation": "EXECUTION PLAN VALIDATION",
+            "status": "PASS",
+            "plan_id": plan.plan_id,
+            "steps": len(plan.steps),
+        }
+    except (
+        OSError,
+        UnicodeError,
+        json.JSONDecodeError,
+        KeyError,
+        ValueError,
+        ControlPlaneError,
+        ExecutionEngineError,
+    ) as error:
+        payload = {"operation": "EXECUTION PLAN VALIDATION", "status": "FAIL", "error": str(error)}
+        print(
+            json.dumps(payload, indent=2)
+            if as_json
+            else f"EXECUTION PLAN VALIDATION\nStatus: FAIL\nError: {error}"
+        )
+        return 2
+    print(
+        json.dumps(payload, indent=2)
+        if as_json
+        else (
+            "EXECUTION PLAN VALIDATION\n"
+            f"Plan: {plan.plan_id}\nSteps: {len(plan.steps)}\nStatus: PASS"
+        )
+    )
+    return 0
+
+
+def _run_execution_inspect(execution_id: str, *, trace_only: bool, as_json: bool) -> int:
+    try:
+        payload = _execution_session_payload(execution_id, trace_only=trace_only)
+    except ExecutionValidationError as error:
+        payload = {"status": "FAIL", "error": str(error)}
+        print(json.dumps(payload, indent=2) if as_json else f"Status: FAIL\nError: {error}")
+        return 2
+    print(
+        json.dumps({"status": "PASS", **payload}, indent=2)
+        if as_json
+        else (
+            f"EXECUTION {'TRACE' if trace_only else 'SHOW'}\n"
+            f"Execution: {execution_id}\n"
+            f"Events: {len(payload['events'])}\nStatus: PASS"
+        )
+    )
+    return 0
+
+
 def _run_agent_describe(role_name: str, *, as_json: bool) -> int:
     try:
         role = next(
@@ -636,6 +877,38 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _run_session_inspect(
             args.session_id,
             trace_only=args.session_command == "trace",
+            as_json=args.json,
+        )
+
+    if args.command == "execute":
+        return _run_execution_dry_run(
+            args.task_id,
+            args.plan,
+            args.root,
+            as_json=args.json,
+        )
+
+    if args.command == "execution" and args.execution_command == "validate":
+        return _run_execution_validate(args.plan, args.root, as_json=args.json)
+
+    if args.command == "execution" and args.execution_command == "adapters":
+        payload = {
+            "operation": "EXECUTION ADAPTERS",
+            "status": "PASS",
+            "adapters": ["noop"],
+            "external_side_effects": False,
+        }
+        print(
+            json.dumps(payload, indent=2)
+            if args.json
+            else "EXECUTION ADAPTERS\nnoop: side-effect-free\nStatus: PASS"
+        )
+        return 0
+
+    if args.command == "execution":
+        return _run_execution_inspect(
+            args.execution_id,
+            trace_only=args.execution_command == "trace",
             as_json=args.json,
         )
 
