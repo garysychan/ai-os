@@ -484,7 +484,7 @@ Notes:
 
 Priority: P1
 Agent: Controller / Developer / Tester / Reviewer / Fixer
-Status: REVIEW
+Status: DONE
 Dependencies: TASK-0004, TASK-0005, TASK-0006, TASK-0008, TASK-0010, TASK-0011
 
 Description:
@@ -548,6 +548,10 @@ Notes:
   result evidence/error redaction.
 - Whole-branch Reviewer revalidation result: APPROVE; no unresolved blocking finding.
 - TASK-0012 transitioned to `REVIEW` pending protected Pull Request merge evidence.
+- PR #31 was squash merged through protected main governance as
+  `6f6ed9bd3d194dd2878dd25f3bb1503ee9862eec`; G5 passed.
+- Post-merge Control Plane Check Run 35094796340 passed on Python 3.11 and Python 3.12.
+- All acceptance criteria and required gates passed; TASK-0012 transitioned to `DONE`.
 
 ## Task Change Rules
 
