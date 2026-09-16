@@ -387,7 +387,7 @@ Notes:
 
 Priority: P1
 Agent: Controller / Developer / Tester / Reviewer / Fixer
-Status: REVIEW
+Status: DONE
 Dependencies: TASK-0004, TASK-0005, TASK-0006, TASK-0010
 
 Description:
@@ -414,7 +414,7 @@ Acceptance Criteria:
 - [x] Tests pass on Python 3.11 and Python 3.12.
 - [x] Coverage remains at or above the configured 80% threshold.
 - [x] Control Plane Consistency Check has no new blocking finding.
-- [ ] Protected Pull Request governance passes before merge.
+- [x] Protected Pull Request governance passes before merge.
 - [x] Whole-branch Reviewer result is APPROVE.
 
 Artifacts:
@@ -448,7 +448,7 @@ Notes:
   every step to the canonical mapping and added strict CLI plan-field validation.
 - Reviewer revalidation result: APPROVE; no unresolved blocking finding.
 - Control Plane Consistency Check has only pre-existing non-blocking warnings.
-- TASK-0011 transitioned to `REVIEW` pending protected Pull Request merge evidence.
+- TASK-0011 transitioned to `REVIEW` pending protected Pull Request merge evidence.\n- PR #25 passed protected main governance and was squash merged as\n  `3e7846fcf65649b3fc651af6d3273afa5b4d06e9`; G5 passed.\n- All acceptance criteria passed; TASK-0011 transitioned to `DONE`.
 
 ## Task Change Rules
 
