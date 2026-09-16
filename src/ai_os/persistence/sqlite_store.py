@@ -61,10 +61,8 @@ class SQLiteRuntimeStore:
             raise PersistenceConfigurationError("database cannot target a Control Plane file")
         if supplied.is_symlink():
             raise PersistenceConfigurationError("database path cannot be a symlink")
-        existing = supplied.absolute()
-        while not existing.exists() and existing != existing.parent:
-            existing = existing.parent
-        if existing.is_symlink():
+        lexical = supplied.absolute()
+        if any(item.exists() and item.is_symlink() for item in (lexical, *lexical.parents)):
             raise PersistenceConfigurationError("database path cannot traverse a symlink")
         if supplied.exists() and not supplied.is_file():
             raise PersistenceConfigurationError("database path must be a regular file")
@@ -77,43 +75,45 @@ class SQLiteRuntimeStore:
 
     def initialize(self) -> StoreStatus:
         self.database.parent.mkdir(parents=True, exist_ok=True)
-        if self.database.parent.is_symlink():
-            raise PersistenceConfigurationError("database parent cannot be a symlink")
         self.migrate()
-        try:
-            os.chmod(self.database, 0o600)
-        except OSError as error:
-            raise PersistenceConfigurationError("cannot secure database permissions") from error
         return self.status()
 
     def migrate(self) -> StoreStatus:
         self.database.parent.mkdir(parents=True, exist_ok=True)
         try:
-            with self._connect(create=True) as connection, connection:
-                connection.execute(
-                    "CREATE TABLE IF NOT EXISTS schema_migrations ("
-                    "version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)"
-                )
-                current = self._schema_version(connection)
-                if current > CURRENT_SCHEMA_VERSION:
-                    raise PersistenceMigrationError(
-                        f"database schema {current} is newer than supported "
-                        f"{CURRENT_SCHEMA_VERSION}"
-                    )
-                for version in range(current + 1, CURRENT_SCHEMA_VERSION + 1):
-                    statements = MIGRATIONS.get(version)
-                    if statements is None:
-                        raise PersistenceMigrationError(
-                            f"missing migration for schema version {version}"
-                        )
-                    for statement in statements:
-                        connection.execute(statement)
+            with self._connect(create=True) as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                try:
                     connection.execute(
-                        "INSERT INTO schema_migrations(version, applied_at) VALUES (?, ?)",
-                        (version, datetime.now().astimezone().isoformat()),
+                        "CREATE TABLE IF NOT EXISTS schema_migrations ("
+                        "version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)"
                     )
+                    current = self._schema_version(connection)
+                    if current > CURRENT_SCHEMA_VERSION:
+                        raise PersistenceMigrationError(
+                            f"database schema {current} is newer than supported "
+                            f"{CURRENT_SCHEMA_VERSION}"
+                        )
+                    for version in range(current + 1, CURRENT_SCHEMA_VERSION + 1):
+                        statements = MIGRATIONS.get(version)
+                        if statements is None:
+                            raise PersistenceMigrationError(
+                                f"missing migration for schema version {version}"
+                            )
+                        for statement in statements:
+                            connection.execute(statement)
+                        connection.execute(
+                            "INSERT INTO schema_migrations(version, applied_at) VALUES (?, ?)",
+                            (version, datetime.now().astimezone().isoformat()),
+                        )
+                except Exception:
+                    connection.rollback()
+                    raise
+                else:
+                    connection.commit()
         except sqlite3.DatabaseError as error:
             raise PersistenceMigrationError("SQLite migration failed") from error
+        self._secure_permissions()
         return self.status()
 
     def status(self) -> StoreStatus:
@@ -391,6 +391,12 @@ class SQLiteRuntimeStore:
                 f"limit must be between 1 and {self.config.max_query_limit}"
             )
         return limit
+
+    def _secure_permissions(self) -> None:
+        try:
+            os.chmod(self.database, 0o600)
+        except OSError as error:
+            raise PersistenceConfigurationError("cannot secure database permissions") from error
 
     @staticmethod
     def _now() -> str:

@@ -43,6 +43,11 @@ from .errors import PersistenceIntegrityError
 
 _CODEC_VERSION = 1
 _T = TypeVar("_T")
+_SENSITIVE_KEYS = ("authorization", "credential", "password", "secret", "token")
+
+
+def _sensitive_key(value: str) -> bool:
+    return any(item in value.casefold() for item in _SENSITIVE_KEYS)
 
 
 def _json_value(value: Any) -> Any:
@@ -55,8 +60,19 @@ def _json_value(value: Any) -> Any:
     if is_dataclass(value) and not isinstance(value, type):
         return _json_value(asdict(value))
     if isinstance(value, dict):
-        return {str(key): _json_value(item) for key, item in value.items()}
+        return {
+            str(key): "[REDACTED]" if _sensitive_key(str(key)) else _json_value(item)
+            for key, item in value.items()
+        }
     if isinstance(value, (tuple, list)):
+        if (
+            len(value) == 2
+            and isinstance(value[0], str)
+            and isinstance(value[1], str)
+            and _sensitive_key(value[0])
+            and not any(character in value[0] for character in "=: \t")
+        ):
+            return [value[0], "[REDACTED]"]
         return [_json_value(item) for item in value]
     if isinstance(value, (str, int, float, bool)) or value is None:
         return redact_text(value) if isinstance(value, str) else value

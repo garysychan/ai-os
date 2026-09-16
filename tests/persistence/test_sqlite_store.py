@@ -32,6 +32,7 @@ from ai_os.persistence import (
     SQLiteRuntimeStore,
     StoreConfig,
 )
+from ai_os.persistence.migrations import MIGRATIONS
 from ai_os.tasks import TaskStatus
 
 NOW = datetime(2026, 9, 16, tzinfo=UTC)
@@ -150,6 +151,13 @@ def test_store_redacts_sensitive_text_before_persistence(tmp_path: pytest.TempPa
     stored = store.list_adapter_audit()[0]
     assert stored.evidence == ("authorization=[REDACTED]", "token=[REDACTED]")
     assert "Bearer-secret" not in database.read_bytes().decode(errors="ignore")
+    secret_plan = replace(
+        execution_plan(),
+        steps=(replace(execution_plan().steps[0], inputs=(("token", "raw-secret"),)),),
+    )
+    store.save_execution_plan(secret_plan)
+    assert store.get_execution_plan("plan-1").steps[0].inputs == (("token", "[REDACTED]"),)
+    assert "raw-secret" not in database.read_bytes().decode(errors="ignore")
 
 
 def test_unknown_schema_corrupt_record_and_missing_record_fail_closed(
@@ -203,6 +211,12 @@ def test_path_policy_sequence_and_query_bounds(tmp_path: pytest.TempPathFactory)
     symlink.symlink_to(target)
     with pytest.raises(PersistenceConfigurationError):
         SQLiteRuntimeStore(StoreConfig(database=symlink))
+    real_parent = tmp_path / "real-parent"
+    real_parent.mkdir()
+    linked_parent = tmp_path / "linked-parent"
+    linked_parent.symlink_to(real_parent, target_is_directory=True)
+    with pytest.raises(PersistenceConfigurationError):
+        SQLiteRuntimeStore(StoreConfig(database=linked_parent / "nested" / "runtime.sqlite"))
 
     store = SQLiteRuntimeStore(StoreConfig(database=tmp_path / "runtime.sqlite", max_query_limit=2))
     assert store.status().initialized is False
@@ -267,3 +281,28 @@ def test_independent_connections_serialize_concurrent_writes(
     with ThreadPoolExecutor(max_workers=4) as executor:
         tuple(executor.map(save, range(8)))
     assert SQLiteRuntimeStore(StoreConfig(database=database)).status().controller_sessions == 8
+
+
+def test_failed_migration_rolls_back_all_versioned_schema(
+    tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database = tmp_path / "runtime.sqlite"
+    monkeypatch.setitem(
+        MIGRATIONS,
+        1,
+        (
+            "CREATE TABLE partial_write(id INTEGER PRIMARY KEY)",
+            "THIS IS NOT VALID SQL",
+        ),
+    )
+    with pytest.raises(PersistenceMigrationError):
+        SQLiteRuntimeStore(StoreConfig(database=database)).migrate()
+    with sqlite3.connect(database) as connection:
+        tables = {
+            row[0]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
+    assert "partial_write" not in tables
+    assert "schema_migrations" not in tables
