@@ -64,6 +64,7 @@ from ai_os.tasks import (
     TaskStatus,
     validate_task,
 )
+from ai_os.tools import ToolError, ToolRegistry, core_tools
 from ai_os.workflow import ALLOWED_TRANSITIONS
 
 _SESSION_STORE = InMemorySessionStore()
@@ -224,6 +225,22 @@ def _build_parser() -> argparse.ArgumentParser:
     adapter_dry_run.add_argument("--path", type=Path, required=True)
     adapter_dry_run.add_argument("--task-id", default="TASK-0012")
     adapter_dry_run.add_argument("--json", action="store_true")
+
+    tool = commands.add_parser("tool", help="Inspect the governed Tool Registry.")
+    tool_commands = tool.add_subparsers(dest="tool_command", required=True)
+    tool_list = tool_commands.add_parser("list")
+    tool_list.add_argument("--root", type=Path, default=Path.cwd())
+    tool_list.add_argument("--json", action="store_true")
+    tool_describe = tool_commands.add_parser("describe")
+    tool_describe.add_argument("name")
+    tool_describe.add_argument("--version", default="1")
+    tool_describe.add_argument("--root", type=Path, default=Path.cwd())
+    tool_describe.add_argument("--json", action="store_true")
+    tool_validate = tool_commands.add_parser("validate")
+    tool_validate.add_argument("name")
+    tool_validate.add_argument("--version", default="1")
+    tool_validate.add_argument("--root", type=Path, default=Path.cwd())
+    tool_validate.add_argument("--json", action="store_true")
 
     store = commands.add_parser("store", help="Manage an explicit SQLite runtime store.")
     store_commands = store.add_subparsers(dest="store_command", required=True)
@@ -892,6 +909,72 @@ def _core_adapter_registry(root: Path) -> CoreAdapterRegistry:
     return CoreAdapterRegistry((ReadOnlyFileAdapter((resolved,)),))
 
 
+def _core_tool_registry(root: Path) -> ToolRegistry:
+    return ToolRegistry(_core_adapter_registry(root), core_tools())
+
+
+def _tool_metadata_payload(metadata: Any) -> dict[str, Any]:
+    return {
+        "name": metadata.name,
+        "version": metadata.version,
+        "description": metadata.description,
+        "operations": [
+            {
+                "name": item.name,
+                "capability": item.capability.value,
+                "required_permission": item.required_permission.value,
+                "risk": item.risk.value,
+                "side_effect": item.side_effect.value,
+                "idempotent": item.idempotent,
+                "approval_required": item.approval_required,
+                "adapter": f"{item.adapter}@{item.adapter_version}",
+                "adapter_operation": item.adapter_operation,
+            }
+            for item in metadata.operations
+        ],
+    }
+
+
+def _run_tool_inspect(
+    command: str,
+    root: Path,
+    *,
+    name: str | None = None,
+    version: str = "1",
+    as_json: bool,
+) -> int:
+    try:
+        registry = _core_tool_registry(root)
+        if command == "list":
+            tools = [_tool_metadata_payload(item) for item in registry.list_metadata()]
+        else:
+            tools = [_tool_metadata_payload(registry.resolve(name or "", version))]
+    except (OSError, AdapterError, ToolError) as error:
+        payload = {
+            "operation": f"TOOL {command.upper()}",
+            "status": "FAIL",
+            "error_type": type(error).__name__,
+            "error": str(error),
+        }
+        print(
+            json.dumps(payload, indent=2)
+            if as_json
+            else f"TOOL {command.upper()}\nStatus: FAIL\nError: {error}"
+        )
+        return 2
+
+    payload = {"operation": f"TOOL {command.upper()}", "status": "PASS", "tools": tools}
+    if as_json:
+        print(json.dumps(payload, indent=2))
+    else:
+        print(f"TOOL {command.upper()}")
+        for item in tools:
+            operations = ", ".join(operation["name"] for operation in item["operations"])
+            print(f"{item['name']}@{item['version']}: {operations}")
+        print("Status: PASS")
+    return 0
+
+
 def _adapter_metadata_payload(metadata: Any) -> dict[str, Any]:
     return {
         "name": metadata.name,
@@ -1214,6 +1297,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.root,
             args.path,
             args.task_id,
+            as_json=args.json,
+        )
+
+    if args.command == "tool" and args.tool_command in {"list", "describe", "validate"}:
+        return _run_tool_inspect(
+            args.tool_command,
+            args.root,
+            name=getattr(args, "name", None),
+            version=getattr(args, "version", "1"),
             as_json=args.json,
         )
 

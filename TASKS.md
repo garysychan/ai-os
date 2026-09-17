@@ -628,6 +628,67 @@ Notes:
 - Post-merge Control Plane Check Run 35103767140 passed on Python 3.11 and Python 3.12.
 - All acceptance criteria and required gates passed; TASK-0013 transitioned to `DONE`.
 
+## TASK-0014 — Implement Governed Tool Registry
+
+Priority: P1
+Agent: Controller / Developer / Tester / Reviewer / Fixer
+Status: IN_PROGRESS
+Dependencies: TASK-0004, TASK-0010, TASK-0011, TASK-0012, TASK-0013
+
+Description:
+Install a formal, versioned and default-deny Tool Registry above the Adapter Layer. The Registry
+is the canonical discovery and policy-binding entry point for AI OS tools while execution remains
+delegated to the existing governed Adapter Service.
+
+Acceptance Criteria:
+- [x] Immutable Tool metadata, operation, invocation and result models exist.
+- [x] Tool names, versions and operations are explicitly registered and uniquely resolved.
+- [x] Unknown Tools, versions, operations and duplicate registrations fail closed.
+- [x] Every Tool operation binds to an existing versioned Adapter operation.
+- [x] Tool and Adapter risk, side-effect and idempotency declarations must agree.
+- [x] Capability and required permission use the canonical Agent permission mapping.
+- [x] Task state, Agent assignment and explicit approval evidence are enforced where applicable.
+- [x] Write-capable Tools remain unauthorized by default.
+- [x] Tool execution cannot bypass Adapter Service or Adapter Policy.
+- [x] CLI supports `aios tool list`, `describe`, and `validate`.
+- [x] Existing Adapter, Execution, Agent and persistence APIs remain compatible.
+- [x] Python, Web, Shell, GitHub and other external Tools remain separately governed work.
+- [ ] Tests pass on Python 3.11 and Python 3.12.
+- [x] Coverage remains at or above the configured 80% threshold.
+- [x] Control Plane Consistency Check has no new blocking finding.
+- [ ] Whole-branch Reviewer result is APPROVE.
+- [ ] Protected Pull Request governance passes before merge.
+
+Artifacts:
+- CR-2026-011
+- `feature/tool-registry`
+- `src/ai_os/tools/`
+- `tests/tools/`
+
+Risks:
+- Tool resolution could bypass Adapter policy or create a second execution path.
+- Tool metadata could understate Adapter risk or side effects.
+- Capability-to-permission mismatch could widen Agent authority.
+- Tool aliases or versions could become ambiguous.
+
+Notes:
+- CR-2026-011 received explicit A2 Human Approval on 2026-09-17.
+- Implementation started from authoritative `main` commit
+  `48b1ed815ae020a5b6880c0801bb31b050a29933`.
+- Initial scope exposes only the existing read-only File Adapter through a governed Tool binding.
+- No new external side-effect capability or Agent permission is introduced.
+- Local Python 3.12 validation passed 129 tests and 7 subtests with 85.63% branch coverage;
+  Ruff, strict mypy and package build passed.
+- Control Plane Consistency Check has only pre-existing non-blocking warnings.
+- Python 3.11 CI evidence and independent whole-branch Reviewer validation remain pending.
+- PR #37 first CI run 35223722529 failed the changed-file format gate on Python 3.11 and 3.12.
+- Fix Cycle formatted `tools/policy.py` and `tests/tools/test_policy.py`; the exact CI format
+  command and all local quality gates now pass. CI revalidation remains pending.
+- CI revalidation Run 35228127530 passed every gate on Python 3.11 and Python 3.12.
+- Whole-branch Reviewer requested changes because Tool invocations could not preserve Adapter
+  deadlines. Fix Cycle added timezone-aware Tool deadlines, end-to-end Adapter propagation and
+  regression coverage for valid, expired and naive deadlines.
+
 ## Task Change Rules
 
 1. Do not silently delete completed tasks.
