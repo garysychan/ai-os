@@ -52,3 +52,7 @@ def validate_invocation(invocation: ToolInvocation) -> None:
         raise ToolValidationError("attempt exceeds finite attempt limit")
     if len(dict(invocation.inputs)) != len(invocation.inputs):
         raise ToolValidationError("Tool input keys must be unique")
+    if invocation.deadline is not None and (
+        invocation.deadline.tzinfo is None or invocation.deadline.utcoffset() is None
+    ):
+        raise ToolValidationError("Tool deadline must be timezone-aware")

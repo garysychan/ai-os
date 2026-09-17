@@ -1,12 +1,19 @@
 """Default-deny Tool policy tests."""
 
 from dataclasses import replace
+from datetime import datetime
 
 import pytest
 
 from ai_os.agents import AgentRole, Capability, Permission
 from ai_os.tasks import AcceptanceCriterion, Priority, Task, TaskStatus
-from ai_os.tools import ToolInvocation, ToolPolicy, ToolPolicyError, core_tools
+from ai_os.tools import (
+    ToolInvocation,
+    ToolPolicy,
+    ToolPolicyError,
+    ToolValidationError,
+    core_tools,
+)
 
 
 def task(status: TaskStatus = TaskStatus.IN_PROGRESS) -> Task:
@@ -58,3 +65,12 @@ def test_policy_requires_evidence_when_operation_requires_approval() -> None:
     policy.authorize(
         task(), operation, replace(invocation(), approval_evidence=("APPROVE CR-2026-011",))
     )
+
+
+def test_policy_rejects_naive_deadline_before_adapter_dispatch() -> None:
+    with pytest.raises(ToolValidationError, match="timezone-aware"):
+        ToolPolicy().authorize(
+            task(),
+            core_tools()[0].operations[0],
+            replace(invocation(), deadline=datetime(2026, 9, 17)),
+        )

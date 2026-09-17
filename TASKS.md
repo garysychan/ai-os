@@ -684,6 +684,10 @@ Notes:
 - PR #37 first CI run 35223722529 failed the changed-file format gate on Python 3.11 and 3.12.
 - Fix Cycle formatted `tools/policy.py` and `tests/tools/test_policy.py`; the exact CI format
   command and all local quality gates now pass. CI revalidation remains pending.
+- CI revalidation Run 35228127530 passed every gate on Python 3.11 and Python 3.12.
+- Whole-branch Reviewer requested changes because Tool invocations could not preserve Adapter
+  deadlines. Fix Cycle added timezone-aware Tool deadlines, end-to-end Adapter propagation and
+  regression coverage for valid, expired and naive deadlines.
 
 ## Task Change Rules
 

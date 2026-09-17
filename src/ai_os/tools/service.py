@@ -48,6 +48,7 @@ class ToolService:
             inputs=invocation.inputs,
             attempt=invocation.attempt,
             max_attempts=invocation.max_attempts,
+            deadline=invocation.deadline,
         )
         result, audit = self.adapter_service.execute(
             task, adapter_invocation, clock=clock, cancelled=cancelled

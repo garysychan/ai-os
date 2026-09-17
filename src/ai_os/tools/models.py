@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from ai_os.adapters import AdapterAuditEvent, AdapterResult, AdapterRisk, SideEffect
 from ai_os.agents import AgentRole, Capability, Permission
@@ -50,6 +51,7 @@ class ToolInvocation:
     approval_evidence: tuple[str, ...] = ()
     attempt: int = 1
     max_attempts: int = 1
+    deadline: datetime | None = None
 
 
 @dataclass(frozen=True)
