@@ -32,9 +32,7 @@ class ToolPolicy:
         if invocation.required_permission is not operation.required_permission:
             raise ToolPolicyError("Tool invocation permission does not match operation")
         try:
-            self.permission_policy.require(
-                invocation.agent_role, invocation.required_permission
-            )
+            self.permission_policy.require(invocation.agent_role, invocation.required_permission)
         except PermissionDeniedError as error:
             raise ToolPolicyError(str(error)) from error
         if operation.approval_required and not invocation.approval_evidence:

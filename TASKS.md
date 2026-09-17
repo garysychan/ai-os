@@ -681,6 +681,9 @@ Notes:
   Ruff, strict mypy and package build passed.
 - Control Plane Consistency Check has only pre-existing non-blocking warnings.
 - Python 3.11 CI evidence and independent whole-branch Reviewer validation remain pending.
+- PR #37 first CI run 35223722529 failed the changed-file format gate on Python 3.11 and 3.12.
+- Fix Cycle formatted `tools/policy.py` and `tests/tools/test_policy.py`; the exact CI format
+  command and all local quality gates now pass. CI revalidation remains pending.
 
 ## Task Change Rules
 

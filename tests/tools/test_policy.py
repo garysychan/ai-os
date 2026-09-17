@@ -41,13 +41,9 @@ def test_policy_enforces_state_assignment_capability_and_permission() -> None:
     with pytest.raises(ToolPolicyError, match="IN_PROGRESS"):
         policy.authorize(task(TaskStatus.REVIEW), operation, invocation())
     with pytest.raises(ToolPolicyError, match="not assigned"):
-        policy.authorize(
-            task(), operation, replace(invocation(), agent_role=AgentRole.RESEARCHER)
-        )
+        policy.authorize(task(), operation, replace(invocation(), agent_role=AgentRole.RESEARCHER))
     with pytest.raises(ToolPolicyError, match="capability"):
-        policy.authorize(
-            task(), operation, replace(invocation(), capability=Capability.REVIEW)
-        )
+        policy.authorize(task(), operation, replace(invocation(), capability=Capability.REVIEW))
     with pytest.raises(ToolPolicyError, match="permission"):
         policy.authorize(
             task(), operation, replace(invocation(), required_permission=Permission.READ_CONTROL)
