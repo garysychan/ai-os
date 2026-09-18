@@ -849,6 +849,12 @@ Notes:
 - CR Status: APPROVED / IMPLEMENTATION AUTHORIZED.
 - Implementation started from authoritative `main` commit
   `ef28bdc` on `feature/workflow-definition-packs`; TASK-0016 transitioned to `IN_PROGRESS`.
+- TRACE, Investment and Deep Research packs, the fail-closed linear stage driver, exact checkpoint
+  fingerprinting, CLI integration and authoritative documentation are installed.
+- Local Tester pre-validation passed 156 tests and 7 subtests with 85.57% branch coverage; Ruff,
+  formatting, mypy, package build and cross-process Workflow Pack dry-run passed.
+- Control Plane Consistency Check completed with `WARNING` and no new blocking finding; reported
+  warnings pre-date TASK-0016 and remain governed separately.
 
 ## Task Change Rules
 
