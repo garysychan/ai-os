@@ -705,7 +705,7 @@ Notes:
 
 Priority: P1
 Agent: Controller / Developer / Tester / Reviewer / Fixer
-Status: REVIEW
+Status: DONE
 Dependencies: TASK-0004, TASK-0005, TASK-0010, TASK-0011, TASK-0013, TASK-0014
 
 Description:
@@ -736,13 +736,13 @@ Acceptance Criteria:
 - [x] Coverage remains at or above the configured 80% threshold.
 - [x] Control Plane Consistency Check has no new blocking finding.
 - [x] Whole-branch Reviewer result is APPROVE.
-- [ ] Protected Pull Request governance passes before merge.
+- [x] Protected Pull Request governance passes before merge.
 
 Artifacts:
 - CR-2026-012
 - `feature/workflow-engine`
-- Proposed `src/ai_os/workflows/`
-- Proposed `tests/workflows/`
+- `src/ai_os/workflows/`
+- `tests/workflows/`
 
 Risks:
 - Workflow orchestration could duplicate or bypass Controller and State Machine authority.
@@ -776,6 +776,12 @@ Notes:
 - Whole-branch Reviewer revalidation at commit `eaa055c` returned `APPROVE`; RV-001, RV-002 and
   RV-003 are closed with no new blocking finding.
 - TASK-0015 transitioned from `IN_PROGRESS` to `REVIEW` and is Ready for Review.
+- PR #41 passed protected Pull Request governance and was squash merged to `main` as
+  `a802ea5b89d79595fc6f10d1e5c63b53c91e0fb4`.
+- Post-merge Control Plane Check Run 35329612269 (Run #141) completed successfully on `main`
+  commit `a802ea5` with Python 3.11 and Python 3.12 passing.
+- All acceptance criteria and governance gates passed; TASK-0015 transitioned from `REVIEW` to
+  `DONE` and CR-2026-012 is closed as completed.
 
 ## Task Change Rules
 
