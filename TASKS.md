@@ -701,6 +701,65 @@ Notes:
 - All acceptance criteria and required governance gates passed; TASK-0014 transitioned to `DONE`.
 - CR-2026-011 is closed as completed.
 
+## TASK-0015 — Implement Governed Workflow Engine
+
+Priority: P1
+Agent: Controller / Developer / Tester / Reviewer / Fixer
+Status: IN_PROGRESS
+Dependencies: TASK-0004, TASK-0005, TASK-0010, TASK-0011, TASK-0013, TASK-0014
+
+Description:
+Install a deterministic, versioned and default-deny Workflow Engine that loads, validates,
+registers and executes finite workflow definitions while preserving the authority of the Task
+State Machine, Controller, Agent Runtime, Execution Engine, Tool Registry and approval gates.
+
+Acceptance Criteria:
+- [ ] Immutable Workflow definition, stage, session, event and result models exist.
+- [ ] Workflow names, versions and stages are explicitly registered and uniquely resolved.
+- [ ] Unknown Workflow names, versions, stages and duplicate registrations fail closed.
+- [ ] Every executable stage declares one canonical Agent capability and required permission.
+- [ ] Workflow definitions cannot grant Agent permissions or bypass Task assignment.
+- [ ] Task status changes occur only through the existing State Machine.
+- [ ] Agent dispatch occurs only through the existing Controller and Agent Runtime.
+- [ ] External operations remain governed by Execution, Tool and Adapter policies.
+- [ ] Finite stage, retry and Fix Cycle budgets are enforced.
+- [ ] Cancellation and timezone-aware deadlines are enforced.
+- [ ] Reviewer approval and completion gates cannot be bypassed.
+- [ ] Immutable ordered session events and results are inspectable.
+- [ ] In-memory persistence remains the default with an explicit persistent-store boundary.
+- [ ] Resume rejects corrupt, terminal or definition-version-mismatched checkpoints.
+- [ ] A built-in Coding lifecycle is registered without hard-coding provider behavior.
+- [ ] TRACE, Investment and Deep Research definitions remain separately governed extensions.
+- [ ] CLI supports workflow list, describe, validate, dry-run and session inspection.
+- [ ] Existing State Machine, Controller, Execution, Tool and persistence APIs remain compatible.
+- [ ] Tests pass on Python 3.11 and Python 3.12.
+- [ ] Coverage remains at or above the configured 80% threshold.
+- [ ] Control Plane Consistency Check has no new blocking finding.
+- [ ] Whole-branch Reviewer result is APPROVE.
+- [ ] Protected Pull Request governance passes before merge.
+
+Artifacts:
+- CR-2026-012
+- `feature/workflow-engine`
+- Proposed `src/ai_os/workflows/`
+- Proposed `tests/workflows/`
+
+Risks:
+- Workflow orchestration could duplicate or bypass Controller and State Machine authority.
+- Declarative stages could widen Agent permissions through unvalidated metadata.
+- Resume could accept stale or corrupt definition versions.
+- Unbounded stages or Fix Cycles could create runaway execution.
+- Workflow code could become an unrestricted external side-effect gateway.
+
+Notes:
+- CR-2026-012 received explicit A2 Human Approval on 2026-09-18.
+- Dependency gate verified: TASK-0004, TASK-0005, TASK-0010, TASK-0011, TASK-0013 and
+  TASK-0014 are DONE.
+- Implementation started from authoritative `main` commit
+  `e25eda1e1d2bcddfd466303863ff5c9238116981`.
+- Initial scope is the Workflow Engine Core and a governed Coding lifecycle; provider-specific,
+  distributed and background execution remain outside the approved scope.
+
 ## Task Change Rules
 
 1. Do not silently delete completed tasks.
