@@ -580,7 +580,7 @@ Acceptance Criteria:
 - [ ] Bounded inspection and retention/pruning interfaces exist.
 - [ ] CLI supports init, status, migrate and read-only session inspection.
 - [ ] Existing in-memory stores and public APIs remain compatible.
-- [ ] Tests pass on Python 3.11 and Python 3.12.
+- [x] Tests pass on Python 3.11 and Python 3.12.
 - [ ] Coverage remains at or above the configured 80% threshold.
 - [ ] Control Plane Consistency Check has no new blocking finding.
 - [ ] Whole-branch Reviewer result is APPROVE.
@@ -765,6 +765,14 @@ Notes:
   Ruff, mypy, package build and all targeted Workflow tests passed.
 - Control Plane Consistency Check completed with `WARNING` and no blocking finding; all reported
   warnings pre-date this Task and remain subject to approved Control Plane change control.
+- GitHub Python 3.11 and Python 3.12 Checks passed before whole-branch review.
+- Whole-branch Reviewer requested changes for definition/dispatch alignment, pre-dispatch budget
+  enforcement and cross-process CLI session inspection.
+- Reviewer Fix Cycle made `controller_lifecycle` definitions fail closed unless their stages match
+  the canonical lifecycle, added per-dispatch budget/deadline/cancellation guards with terminal
+  audit events, and added a JSON-backed Workflow session store for cross-process CLI inspection.
+- Fix Cycle validation passed 146 tests and 7 subtests with 85.41% branch coverage on both Python
+  3.11 and Python 3.12; Ruff, mypy, package build and Control Plane checks passed.
 
 ## Task Change Rules
 

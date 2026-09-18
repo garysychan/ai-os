@@ -19,11 +19,12 @@ from .models import (
 )
 from .policy import WorkflowPolicy
 from .registry import WorkflowRegistry
-from .store import InMemoryWorkflowStore, WorkflowSessionStore
+from .store import InMemoryWorkflowStore, JsonWorkflowStore, WorkflowSessionStore
 from .validation import validate_checkpoint, validate_definition
 
 __all__ = [
     "InMemoryWorkflowStore",
+    "JsonWorkflowStore",
     "TERMINAL_WORKFLOW_STATUSES",
     "WorkflowDefinition",
     "WorkflowEngine",

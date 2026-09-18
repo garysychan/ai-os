@@ -42,3 +42,5 @@ def test_definition_rejects_permission_driver_budget_and_duplicate_stage() -> No
         WorkflowRegistry((replace(definition, max_steps=1),))
     with pytest.raises(WorkflowValidationError, match="unique"):
         WorkflowRegistry((replace(definition, stages=(stage, stage)),))
+    with pytest.raises(WorkflowValidationError, match="canonical"):
+        WorkflowRegistry((replace(definition, stages=(stage,)),))

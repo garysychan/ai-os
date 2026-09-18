@@ -167,12 +167,12 @@ def test_controller_finite_fix_cycle_is_preserved() -> None:
 
 
 def test_workflow_step_budget_fails_closed() -> None:
-    runtime, _ = engine(
+    runtime, store = engine(
         tests=(ExecutionStatus.FAILED, ExecutionStatus.SUCCESS),
         fixes=(ExecutionStatus.SUCCESS,),
         max_steps=4,
     )
-    with pytest.raises(WorkflowPolicyError, match="exceeded Workflow step budget"):
+    with pytest.raises(WorkflowPolicyError, match="step budget exhausted"):
         runtime.run(
             task(),
             "coding",
@@ -182,10 +182,14 @@ def test_workflow_step_budget_fails_closed() -> None:
             clock=lambda: NOW,
             max_fix_attempts=1,
         )
+    session_id = f"workflow:TASK-0015:coding:1:{int(NOW.timestamp() * 1_000_000)}"
+    aborted = store.get(session_id)
+    assert aborted.status is WorkflowStatus.ESCALATED
+    assert aborted.events[-1].event_type == "WORKFLOW_ABORTED"
 
 
 def test_pre_dispatch_cancellation_and_deadline_fail_closed() -> None:
-    runtime, _ = engine()
+    runtime, store = engine()
     with pytest.raises(WorkflowPolicyError, match="cancelled"):
         runtime.run(
             task(),
@@ -196,6 +200,11 @@ def test_pre_dispatch_cancellation_and_deadline_fail_closed() -> None:
             clock=lambda: NOW,
             cancelled=lambda: True,
         )
+    session_id = f"workflow:TASK-0015:coding:1:{int(NOW.timestamp() * 1_000_000)}"
+    assert store.get(session_id).status is WorkflowStatus.CANCELLED
+    runtime, store = engine()
+    deadline = NOW + timedelta(seconds=1)
+    timestamps = iter((NOW, deadline))
     with pytest.raises(WorkflowPolicyError, match="expired"):
         runtime.run(
             task(),
@@ -203,9 +212,10 @@ def test_pre_dispatch_cancellation_and_deadline_fail_closed() -> None:
             "1",
             "expired",
             dependency_states=DEPENDENCIES,
-            clock=lambda: NOW,
-            deadline=NOW,
+            clock=lambda: next(timestamps, deadline),
+            deadline=deadline,
         )
+    assert store.get(session_id).status is WorkflowStatus.ESCALATED
 
 
 def test_resume_rejects_terminal_version_mismatch_and_corrupt_events() -> None:

@@ -67,7 +67,7 @@ from ai_os.tasks import (
 from ai_os.tools import ToolError, ToolRegistry, core_tools
 from ai_os.workflow import ALLOWED_TRANSITIONS
 from ai_os.workflows import (
-    InMemoryWorkflowStore,
+    JsonWorkflowStore,
     WorkflowEngine,
     WorkflowError,
     WorkflowRegistry,
@@ -81,7 +81,6 @@ from ai_os.workflows import (
 
 _SESSION_STORE = InMemorySessionStore()
 _EXECUTION_STORE = InMemoryExecutionStore()
-_WORKFLOW_STORE = InMemoryWorkflowStore()
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -272,9 +271,11 @@ def _build_parser() -> argparse.ArgumentParser:
     workflow_dry_run.add_argument("--version", default="1")
     workflow_dry_run.add_argument("--objective", required=True)
     workflow_dry_run.add_argument("--root", type=Path, default=Path.cwd())
+    workflow_dry_run.add_argument("--store", type=Path)
     workflow_dry_run.add_argument("--json", action="store_true")
     workflow_session = workflow_commands.add_parser("session")
     workflow_session.add_argument("session_id")
+    workflow_session.add_argument("--store", type=Path, default=Path(".ai-os/workflows"))
     workflow_session.add_argument("--json", action="store_true")
 
     store = commands.add_parser("store", help="Manage an explicit SQLite runtime store.")
@@ -1269,6 +1270,7 @@ def _run_workflow_dry_run(
     task_id: str,
     objective: str,
     root: Path,
+    store_path: Path | None,
     *,
     as_json: bool,
 ) -> int:
@@ -1280,7 +1282,8 @@ def _run_workflow_dry_run(
             for dependency in task.dependencies
         }
         controller = ControllerEngine(AgentRuntime(AgentRouter(AgentRegistry(canonical_agents()))))
-        engine = WorkflowEngine(_workflow_registry(), controller, store=_WORKFLOW_STORE)
+        store = JsonWorkflowStore(store_path or root / ".ai-os" / "workflows")
+        engine = WorkflowEngine(_workflow_registry(), controller, store=store)
         session = engine.start(
             task,
             name,
@@ -1314,9 +1317,9 @@ def _run_workflow_dry_run(
     return 0
 
 
-def _run_workflow_session(session_id: str, *, as_json: bool) -> int:
+def _run_workflow_session(session_id: str, store_path: Path, *, as_json: bool) -> int:
     try:
-        session = _WORKFLOW_STORE.get(session_id)
+        session = JsonWorkflowStore(store_path).get(session_id)
     except WorkflowError as error:
         payload = {"operation": "WORKFLOW SESSION", "status": "FAIL", "error": str(error)}
         print(
@@ -1563,11 +1566,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.task_id,
             args.objective,
             args.root,
+            args.store,
             as_json=args.json,
         )
 
     if args.command == "workflow" and args.workflow_command == "session":
-        return _run_workflow_session(args.session_id, as_json=args.json)
+        return _run_workflow_session(args.session_id, args.store, as_json=args.json)
 
     if args.command == "store":
         return _run_store(args)

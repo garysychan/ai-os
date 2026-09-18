@@ -127,29 +127,52 @@ class WorkflowEngine:
             approval_evidence=approval_evidence,
             max_fix_attempts=max_fix_attempts,
         )
-        if cancelled is not None and cancelled():
-            raise WorkflowPolicyError("Workflow cancelled before Controller dispatch")
-        if deadline is not None and now() >= deadline:
-            raise WorkflowPolicyError("Workflow deadline expired before Controller dispatch")
-        controller_session, updated_task = self.controller.run_lifecycle(
-            task,
-            objective,
-            dependency_states=dependency_states,
-            clock=now,
-            max_fix_attempts=session.max_fix_attempts,
-            approval_evidence=approval_evidence,
-        )
+        dispatched_steps = 0
+
+        def guard_dispatch() -> None:
+            nonlocal dispatched_steps
+            if cancelled is not None and cancelled():
+                raise WorkflowPolicyError("Workflow cancelled before Agent dispatch")
+            if deadline is not None and now() >= deadline:
+                raise WorkflowPolicyError("Workflow deadline expired before Agent dispatch")
+            if dispatched_steps >= session.max_steps:
+                raise WorkflowPolicyError(
+                    f"Workflow step budget exhausted at {session.max_steps} dispatches"
+                )
+            dispatched_steps += 1
+
+        try:
+            controller_session, updated_task = self.controller.run_lifecycle(
+                task,
+                objective,
+                dependency_states=dependency_states,
+                clock=now,
+                max_fix_attempts=session.max_fix_attempts,
+                approval_evidence=approval_evidence,
+                dispatch_guard=guard_dispatch,
+            )
+        except WorkflowPolicyError as policy_error:
+            status = (
+                WorkflowStatus.CANCELLED
+                if "cancelled" in str(policy_error).casefold()
+                else WorkflowStatus.ESCALATED
+            )
+            self._record_abort(session, status, str(policy_error), now())
+            raise
         if controller_session.outcome is None:
-            raise WorkflowPolicyError("Controller returned a non-terminal session")
-        dispatched_steps = sum(
+            terminal_error = WorkflowPolicyError("Controller returned a non-terminal session")
+            self._record_abort(session, WorkflowStatus.ESCALATED, str(terminal_error), now())
+            raise terminal_error
+        recorded_dispatches = sum(
             event.event_type is ControllerEventType.AGENT_DISPATCHED
             for event in controller_session.events
         )
-        if dispatched_steps > session.max_steps:
-            raise WorkflowPolicyError(
-                "Controller exceeded Workflow step budget: "
-                f"{dispatched_steps} > {session.max_steps}"
+        if recorded_dispatches != dispatched_steps:
+            trace_error = WorkflowPolicyError(
+                "Controller dispatch trace does not match Workflow budget accounting"
             )
+            self._record_abort(session, WorkflowStatus.ESCALATED, str(trace_error), now())
+            raise trace_error
         status = _OUTCOME_STATUS[controller_session.outcome]
         events = list(session.events)
         for item in controller_session.events:
@@ -174,6 +197,31 @@ class WorkflowEngine:
         )
         self.store.save(terminal)
         return WorkflowResult(terminal, updated_task, controller_session)
+
+    def _record_abort(
+        self,
+        session: WorkflowSession,
+        status: WorkflowStatus,
+        reason: str,
+        timestamp: datetime,
+    ) -> None:
+        event = WorkflowEvent(
+            len(session.events) + 1,
+            session.session_id,
+            session.task_id,
+            "WORKFLOW_ABORTED",
+            status.value,
+            timestamp,
+            reason,
+        )
+        self.store.save(
+            replace(
+                session,
+                status=status,
+                updated_at=timestamp,
+                events=(*session.events, event),
+            )
+        )
 
     def validate_resume(self, session_id: str) -> WorkflowSession:
         session = self.store.get(session_id)

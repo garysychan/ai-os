@@ -1,5 +1,6 @@
 """Deterministic Workflow definition and checkpoint validation."""
 
+from ai_os.agents import AgentRole, Capability, Permission
 from ai_os.agents.permissions import CAPABILITY_PERMISSION
 
 from .errors import WorkflowValidationError
@@ -10,6 +11,12 @@ from .models import (
 )
 
 _SUPPORTED_DRIVERS = frozenset({"controller_lifecycle"})
+_CONTROLLER_LIFECYCLE = (
+    ("implement", AgentRole.DEVELOPER, Capability.IMPLEMENT, Permission.MODIFY_CODE),
+    ("test", AgentRole.TESTER, Capability.TEST, Permission.READ_CONTROL),
+    ("review", AgentRole.REVIEWER, Capability.REVIEW, Permission.APPROVE_REVIEW),
+    ("fix", AgentRole.FIXER, Capability.FIX, Permission.MODIFY_CODE),
+)
 
 
 def validate_definition(definition: WorkflowDefinition) -> None:
@@ -34,6 +41,14 @@ def validate_definition(definition: WorkflowDefinition) -> None:
             raise WorkflowValidationError(
                 f"stage {stage.name} capability {stage.capability.value} requires {canonical.value}"
             )
+    declared = tuple(
+        (stage.name, stage.agent_role, stage.capability, stage.required_permission)
+        for stage in definition.stages
+    )
+    if definition.driver == "controller_lifecycle" and declared != _CONTROLLER_LIFECYCLE:
+        raise WorkflowValidationError(
+            "controller_lifecycle requires the canonical implement/test/review/fix stages"
+        )
 
 
 def validate_checkpoint(session: WorkflowSession, definition: WorkflowDefinition) -> None:
@@ -47,6 +62,12 @@ def validate_checkpoint(session: WorkflowSession, definition: WorkflowDefinition
         raise WorkflowValidationError("terminal Workflow session cannot be resumed")
     if session.max_steps != definition.max_steps:
         raise WorkflowValidationError("checkpoint step budget does not match definition")
+    if session.max_fix_attempts < 0 or session.max_fix_attempts > definition.max_fix_attempts:
+        raise WorkflowValidationError("checkpoint Fix Cycle budget does not match definition")
+    if not session.objective.strip():
+        raise WorkflowValidationError("checkpoint objective is empty")
+    if session.updated_at < session.started_at:
+        raise WorkflowValidationError("checkpoint timestamps are corrupt")
     sequences = tuple(event.sequence for event in session.events)
     if sequences != tuple(range(1, len(sequences) + 1)):
         raise WorkflowValidationError("checkpoint event sequence is corrupt")
@@ -55,3 +76,5 @@ def validate_checkpoint(session: WorkflowSession, definition: WorkflowDefinition
         for event in session.events
     ):
         raise WorkflowValidationError("checkpoint event identity is corrupt")
+    if any(event.timestamp < session.started_at for event in session.events):
+        raise WorkflowValidationError("checkpoint event timestamp is corrupt")
