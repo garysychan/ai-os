@@ -845,9 +845,10 @@ Notes:
 - Impact: Adds domain workflows while preserving existing authority and public APIs.
 - Dependencies: TASK-0004, TASK-0005, TASK-0010 through TASK-0015 as listed above.
 - Approval Required: Explicit A2 Human Approval before implementation.
-- CR Status: PROPOSED / AWAITING APPROVAL.
-- No implementation or controlled architecture/workflow modification is authorized by this
-  registration commit.
+- Approval Evidence: Repository Owner issued `APPROVE CR-2026-013` on 2026-09-18.
+- CR Status: APPROVED / IMPLEMENTATION AUTHORIZED.
+- TASK-0016 remains `TODO`; implementation begins only after creation of the approved feature
+  branch and transition to `IN_PROGRESS`.
 
 ## Task Change Rules
 
