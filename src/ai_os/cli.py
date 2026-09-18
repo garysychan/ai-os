@@ -66,9 +66,22 @@ from ai_os.tasks import (
 )
 from ai_os.tools import ToolError, ToolRegistry, core_tools
 from ai_os.workflow import ALLOWED_TRANSITIONS
+from ai_os.workflows import (
+    InMemoryWorkflowStore,
+    WorkflowEngine,
+    WorkflowError,
+    WorkflowRegistry,
+    WorkflowStage,
+    core_workflows,
+    validate_definition,
+)
+from ai_os.workflows import (
+    WorkflowDefinition as RuntimeWorkflowDefinition,
+)
 
 _SESSION_STORE = InMemorySessionStore()
 _EXECUTION_STORE = InMemoryExecutionStore()
+_WORKFLOW_STORE = InMemoryWorkflowStore()
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -241,6 +254,28 @@ def _build_parser() -> argparse.ArgumentParser:
     tool_validate.add_argument("--version", default="1")
     tool_validate.add_argument("--root", type=Path, default=Path.cwd())
     tool_validate.add_argument("--json", action="store_true")
+
+    workflow = commands.add_parser("workflow", help="Inspect governed Workflows.")
+    workflow_commands = workflow.add_subparsers(dest="workflow_command", required=True)
+    workflow_list = workflow_commands.add_parser("list")
+    workflow_list.add_argument("--json", action="store_true")
+    workflow_describe = workflow_commands.add_parser("describe")
+    workflow_describe.add_argument("name")
+    workflow_describe.add_argument("--version", default="1")
+    workflow_describe.add_argument("--json", action="store_true")
+    workflow_validate = workflow_commands.add_parser("validate")
+    workflow_validate.add_argument("definition", type=Path)
+    workflow_validate.add_argument("--json", action="store_true")
+    workflow_dry_run = workflow_commands.add_parser("dry-run")
+    workflow_dry_run.add_argument("name")
+    workflow_dry_run.add_argument("task_id")
+    workflow_dry_run.add_argument("--version", default="1")
+    workflow_dry_run.add_argument("--objective", required=True)
+    workflow_dry_run.add_argument("--root", type=Path, default=Path.cwd())
+    workflow_dry_run.add_argument("--json", action="store_true")
+    workflow_session = workflow_commands.add_parser("session")
+    workflow_session.add_argument("session_id")
+    workflow_session.add_argument("--json", action="store_true")
 
     store = commands.add_parser("store", help="Manage an explicit SQLite runtime store.")
     store_commands = store.add_subparsers(dest="store_command", required=True)
@@ -1106,6 +1141,207 @@ def _run_adapter_dry_run(
     return 0
 
 
+def _workflow_registry() -> WorkflowRegistry:
+    return WorkflowRegistry(core_workflows())
+
+
+def _workflow_payload(definition: RuntimeWorkflowDefinition) -> dict[str, Any]:
+    return {
+        "name": definition.name,
+        "version": definition.version,
+        "description": definition.description,
+        "driver": definition.driver,
+        "max_steps": definition.max_steps,
+        "max_fix_attempts": definition.max_fix_attempts,
+        "approval_required": definition.approval_required,
+        "stages": [
+            {
+                "name": stage.name,
+                "agent_role": stage.agent_role.value,
+                "capability": stage.capability.value,
+                "required_permission": stage.required_permission.value,
+            }
+            for stage in definition.stages
+        ],
+    }
+
+
+def _run_workflow_inspect(
+    command: str,
+    *,
+    name: str | None = None,
+    version: str = "1",
+    as_json: bool,
+) -> int:
+    try:
+        registry = _workflow_registry()
+        definitions = (
+            registry.list_definitions()
+            if command == "list"
+            else (registry.resolve(name or "", version),)
+        )
+        items = [_workflow_payload(item) for item in definitions]
+    except WorkflowError as error:
+        payload = {
+            "operation": f"WORKFLOW {command.upper()}",
+            "status": "FAIL",
+            "error": str(error),
+        }
+        print(
+            json.dumps(payload, indent=2)
+            if as_json
+            else f"WORKFLOW {command.upper()}\nStatus: FAIL\nError: {error}"
+        )
+        return 2
+    payload = {"operation": f"WORKFLOW {command.upper()}", "status": "PASS", "workflows": items}
+    if as_json:
+        print(json.dumps(payload, indent=2))
+    else:
+        print(f"WORKFLOW {command.upper()}")
+        for item in items:
+            print(
+                f"{item['name']}@{item['version']}: "
+                + ", ".join(stage["name"] for stage in item["stages"])
+            )
+        print("Status: PASS")
+    return 0
+
+
+def _load_workflow_definition(path: Path) -> RuntimeWorkflowDefinition:
+    payload = json.loads(path.expanduser().resolve(strict=True).read_text(encoding="utf-8"))
+    stages = tuple(
+        WorkflowStage(
+            name=str(item["name"]),
+            agent_role=AgentRole(str(item["agent_role"])),
+            capability=Capability(str(item["capability"])),
+            required_permission=Permission(str(item["required_permission"])),
+        )
+        for item in payload["stages"]
+    )
+    return RuntimeWorkflowDefinition(
+        name=str(payload["name"]),
+        version=str(payload["version"]),
+        description=str(payload["description"]),
+        driver=str(payload["driver"]),
+        stages=stages,
+        max_steps=int(payload["max_steps"]),
+        max_fix_attempts=int(payload["max_fix_attempts"]),
+        approval_required=bool(payload.get("approval_required", False)),
+    )
+
+
+def _run_workflow_validate(path: Path, *, as_json: bool) -> int:
+    try:
+        definition = _load_workflow_definition(path)
+        validate_definition(definition)
+    except (
+        OSError,
+        UnicodeError,
+        KeyError,
+        TypeError,
+        ValueError,
+        json.JSONDecodeError,
+        WorkflowError,
+    ) as error:
+        payload = {"operation": "WORKFLOW VALIDATE", "status": "FAIL", "error": str(error)}
+        print(
+            json.dumps(payload, indent=2)
+            if as_json
+            else f"WORKFLOW VALIDATE\nStatus: FAIL\nError: {error}"
+        )
+        return 2
+    payload = {
+        "operation": "WORKFLOW VALIDATE",
+        "status": "PASS",
+        "workflow": _workflow_payload(definition),
+    }
+    print(
+        json.dumps(payload, indent=2)
+        if as_json
+        else f"WORKFLOW VALIDATE\n{definition.name}@{definition.version}\nStatus: PASS"
+    )
+    return 0
+
+
+def _run_workflow_dry_run(
+    name: str,
+    version: str,
+    task_id: str,
+    objective: str,
+    root: Path,
+    *,
+    as_json: bool,
+) -> int:
+    try:
+        control_plane = load_control_plane(root)
+        task = _runtime_task(control_plane.tasks[task_id])
+        dependencies = {
+            dependency: TaskStatus(control_plane.tasks[dependency].status or "TODO")
+            for dependency in task.dependencies
+        }
+        controller = ControllerEngine(AgentRuntime(AgentRouter(AgentRegistry(canonical_agents()))))
+        engine = WorkflowEngine(_workflow_registry(), controller, store=_WORKFLOW_STORE)
+        session = engine.start(
+            task,
+            name,
+            version,
+            objective,
+            dependency_states=dependencies,
+            started_at=datetime.now(UTC),
+            approval_evidence=("dry-run: no external side effects authorized",),
+        )
+    except (KeyError, OSError, ValueError, ControlPlaneError, TaskError, WorkflowError) as error:
+        payload = {"operation": "WORKFLOW DRY-RUN", "status": "FAIL", "error": str(error)}
+        print(
+            json.dumps(payload, indent=2)
+            if as_json
+            else f"WORKFLOW DRY-RUN\nStatus: FAIL\nError: {error}"
+        )
+        return 2
+    payload = {
+        "operation": "WORKFLOW DRY-RUN",
+        "status": "PASS",
+        "session_id": session.session_id,
+        "task_id": session.task_id,
+        "workflow": f"{session.workflow}@{session.workflow_version}",
+        "external_side_effects": False,
+    }
+    print(
+        json.dumps(payload, indent=2)
+        if as_json
+        else f"WORKFLOW DRY-RUN\nSession: {session.session_id}\nStatus: PASS"
+    )
+    return 0
+
+
+def _run_workflow_session(session_id: str, *, as_json: bool) -> int:
+    try:
+        session = _WORKFLOW_STORE.get(session_id)
+    except WorkflowError as error:
+        payload = {"operation": "WORKFLOW SESSION", "status": "FAIL", "error": str(error)}
+        print(
+            json.dumps(payload, indent=2)
+            if as_json
+            else f"WORKFLOW SESSION\nStatus: FAIL\nError: {error}"
+        )
+        return 2
+    payload = {
+        "operation": "WORKFLOW SESSION",
+        "status": "PASS",
+        "session_id": session.session_id,
+        "task_id": session.task_id,
+        "workflow": f"{session.workflow}@{session.workflow_version}",
+        "workflow_status": session.status.value,
+        "events": len(session.events),
+    }
+    print(
+        json.dumps(payload, indent=2)
+        if as_json
+        else f"WORKFLOW SESSION\nSession: {session.session_id}\nStatus: PASS"
+    )
+    return 0
+
+
 def _store_status_payload(status: Any) -> dict[str, Any]:
     return {
         "database": str(status.database),
@@ -1308,6 +1544,30 @@ def main(argv: Sequence[str] | None = None) -> int:
             version=getattr(args, "version", "1"),
             as_json=args.json,
         )
+
+    if args.command == "workflow" and args.workflow_command in {"list", "describe"}:
+        return _run_workflow_inspect(
+            args.workflow_command,
+            name=getattr(args, "name", None),
+            version=getattr(args, "version", "1"),
+            as_json=args.json,
+        )
+
+    if args.command == "workflow" and args.workflow_command == "validate":
+        return _run_workflow_validate(args.definition, as_json=args.json)
+
+    if args.command == "workflow" and args.workflow_command == "dry-run":
+        return _run_workflow_dry_run(
+            args.name,
+            args.version,
+            args.task_id,
+            args.objective,
+            args.root,
+            as_json=args.json,
+        )
+
+    if args.command == "workflow" and args.workflow_command == "session":
+        return _run_workflow_session(args.session_id, as_json=args.json)
 
     if args.command == "store":
         return _run_store(args)

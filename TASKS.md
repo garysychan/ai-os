@@ -714,27 +714,27 @@ registers and executes finite workflow definitions while preserving the authorit
 State Machine, Controller, Agent Runtime, Execution Engine, Tool Registry and approval gates.
 
 Acceptance Criteria:
-- [ ] Immutable Workflow definition, stage, session, event and result models exist.
-- [ ] Workflow names, versions and stages are explicitly registered and uniquely resolved.
-- [ ] Unknown Workflow names, versions, stages and duplicate registrations fail closed.
-- [ ] Every executable stage declares one canonical Agent capability and required permission.
-- [ ] Workflow definitions cannot grant Agent permissions or bypass Task assignment.
-- [ ] Task status changes occur only through the existing State Machine.
-- [ ] Agent dispatch occurs only through the existing Controller and Agent Runtime.
-- [ ] External operations remain governed by Execution, Tool and Adapter policies.
-- [ ] Finite stage, retry and Fix Cycle budgets are enforced.
-- [ ] Cancellation and timezone-aware deadlines are enforced.
-- [ ] Reviewer approval and completion gates cannot be bypassed.
-- [ ] Immutable ordered session events and results are inspectable.
-- [ ] In-memory persistence remains the default with an explicit persistent-store boundary.
-- [ ] Resume rejects corrupt, terminal or definition-version-mismatched checkpoints.
-- [ ] A built-in Coding lifecycle is registered without hard-coding provider behavior.
-- [ ] TRACE, Investment and Deep Research definitions remain separately governed extensions.
-- [ ] CLI supports workflow list, describe, validate, dry-run and session inspection.
-- [ ] Existing State Machine, Controller, Execution, Tool and persistence APIs remain compatible.
+- [x] Immutable Workflow definition, stage, session, event and result models exist.
+- [x] Workflow names, versions and stages are explicitly registered and uniquely resolved.
+- [x] Unknown Workflow names, versions, stages and duplicate registrations fail closed.
+- [x] Every executable stage declares one canonical Agent capability and required permission.
+- [x] Workflow definitions cannot grant Agent permissions or bypass Task assignment.
+- [x] Task status changes occur only through the existing State Machine.
+- [x] Agent dispatch occurs only through the existing Controller and Agent Runtime.
+- [x] External operations remain governed by Execution, Tool and Adapter policies.
+- [x] Finite stage, retry and Fix Cycle budgets are enforced.
+- [x] Cancellation and timezone-aware deadlines are enforced.
+- [x] Reviewer approval and completion gates cannot be bypassed.
+- [x] Immutable ordered session events and results are inspectable.
+- [x] In-memory persistence remains the default with an explicit persistent-store boundary.
+- [x] Resume rejects corrupt, terminal or definition-version-mismatched checkpoints.
+- [x] A built-in Coding lifecycle is registered without hard-coding provider behavior.
+- [x] TRACE, Investment and Deep Research definitions remain separately governed extensions.
+- [x] CLI supports workflow list, describe, validate, dry-run and session inspection.
+- [x] Existing State Machine, Controller, Execution, Tool and persistence APIs remain compatible.
 - [ ] Tests pass on Python 3.11 and Python 3.12.
-- [ ] Coverage remains at or above the configured 80% threshold.
-- [ ] Control Plane Consistency Check has no new blocking finding.
+- [x] Coverage remains at or above the configured 80% threshold.
+- [x] Control Plane Consistency Check has no new blocking finding.
 - [ ] Whole-branch Reviewer result is APPROVE.
 - [ ] Protected Pull Request governance passes before merge.
 
@@ -759,6 +759,12 @@ Notes:
   `e25eda1e1d2bcddfd466303863ff5c9238116981`.
 - Initial scope is the Workflow Engine Core and a governed Coding lifecycle; provider-specific,
   distributed and background execution remain outside the approved scope.
+- Workflow Engine Core, governed Coding lifecycle and CLI integration were implemented under
+  `src/ai_os/workflows/`, `tests/workflows/` and `tests/test_workflow_cli.py`.
+- Local Tester Validation passed 144 tests and 7 subtests with 86% branch coverage on Python 3.12;
+  Ruff, mypy, package build and all targeted Workflow tests passed.
+- Control Plane Consistency Check completed with `WARNING` and no blocking finding; all reported
+  warnings pre-date this Task and remain subject to approved Control Plane change control.
 
 ## Task Change Rules
 
