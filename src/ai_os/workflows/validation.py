@@ -1,16 +1,30 @@
 """Deterministic Workflow definition and checkpoint validation."""
 
+import re
+
 from ai_os.agents import AgentRole, Capability, Permission
 from ai_os.agents.permissions import CAPABILITY_PERMISSION
 
 from .errors import WorkflowValidationError
+from .fingerprint import definition_fingerprint
 from .models import (
     TERMINAL_WORKFLOW_STATUSES,
     WorkflowDefinition,
     WorkflowSession,
 )
 
-_SUPPORTED_DRIVERS = frozenset({"controller_lifecycle"})
+_SUPPORTED_DRIVERS = frozenset({"controller_lifecycle", "linear_stage_plan"})
+_SEMANTIC_VERSION = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
+_ROLE_CAPABILITY = {
+    AgentRole.CONTROLLER: Capability.GOVERN,
+    AgentRole.PLANNER: Capability.PLAN,
+    AgentRole.RESEARCHER: Capability.RESEARCH,
+    AgentRole.DEVELOPER: Capability.IMPLEMENT,
+    AgentRole.TESTER: Capability.TEST,
+    AgentRole.REVIEWER: Capability.REVIEW,
+    AgentRole.FIXER: Capability.FIX,
+}
+_RESEARCH_OUTPUT_SECTIONS = frozenset({"facts", "inference", "assumptions"})
 _CONTROLLER_LIFECYCLE = (
     ("implement", AgentRole.DEVELOPER, Capability.IMPLEMENT, Permission.MODIFY_CODE),
     ("test", AgentRole.TESTER, Capability.TEST, Permission.READ_CONTROL),
@@ -36,6 +50,11 @@ def validate_definition(definition: WorkflowDefinition) -> None:
     if definition.max_fix_attempts < 0:
         raise WorkflowValidationError("Workflow fix budget must not be negative")
     for stage in definition.stages:
+        if _ROLE_CAPABILITY[stage.agent_role] is not stage.capability:
+            raise WorkflowValidationError(
+                f"stage {stage.name} role {stage.agent_role.value} cannot execute "
+                f"{stage.capability.value}"
+            )
         canonical = CAPABILITY_PERMISSION[stage.capability]
         if stage.required_permission is not canonical:
             raise WorkflowValidationError(
@@ -48,6 +67,25 @@ def validate_definition(definition: WorkflowDefinition) -> None:
     if definition.driver == "controller_lifecycle" and declared != _CONTROLLER_LIFECYCLE:
         raise WorkflowValidationError(
             "controller_lifecycle requires the canonical implement/test/review/fix stages"
+        )
+    if definition.driver == "linear_stage_plan":
+        if _SEMANTIC_VERSION.fullmatch(definition.version) is None:
+            raise WorkflowValidationError("Workflow pack version must use semantic versioning")
+        if definition.max_fix_attempts != 0:
+            raise WorkflowValidationError("linear_stage_plan does not permit undeclared Fix Cycles")
+        reviews = [stage for stage in definition.stages if stage.capability is Capability.REVIEW]
+        if len(reviews) != 1 or definition.stages[-1] is not reviews[0]:
+            raise WorkflowValidationError(
+                "linear_stage_plan requires exactly one final Reviewer stage"
+            )
+        allowed = {Capability.PLAN, Capability.RESEARCH, Capability.REVIEW}
+        if any(stage.capability not in allowed for stage in definition.stages):
+            raise WorkflowValidationError("linear_stage_plan contains an invalid stage ordering")
+    if definition.name in {"investment", "deep-research"} and not (
+        set(definition.required_output_sections) >= _RESEARCH_OUTPUT_SECTIONS
+    ):
+        raise WorkflowValidationError(
+            "research outputs must distinguish facts, inference and assumptions"
         )
 
 
@@ -64,6 +102,8 @@ def validate_checkpoint(session: WorkflowSession, definition: WorkflowDefinition
         raise WorkflowValidationError("checkpoint step budget does not match definition")
     if session.max_fix_attempts < 0 or session.max_fix_attempts > definition.max_fix_attempts:
         raise WorkflowValidationError("checkpoint Fix Cycle budget does not match definition")
+    if session.definition_fingerprint != definition_fingerprint(definition):
+        raise WorkflowValidationError("checkpoint definition fingerprint does not match definition")
     if not session.objective.strip():
         raise WorkflowValidationError("checkpoint objective is empty")
     if session.updated_at < session.started_at:

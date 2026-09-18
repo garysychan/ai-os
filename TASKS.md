@@ -26,7 +26,7 @@ This file is the current task/state registry. It is designed to be synchronized 
 
 Priority: P1
 Agent: Planner / Developer / Reviewer / etc.
-Status: IN_PROGRESS
+Status: TODO
 Dependencies: None
 
 Description:
@@ -787,7 +787,7 @@ Notes:
 
 Priority: P1
 Agent: Controller / Planner / Researcher / Developer / Tester / Reviewer / Fixer
-Status: TODO
+Status: IN_PROGRESS
 Dependencies: TASK-0004, TASK-0005, TASK-0010, TASK-0011, TASK-0012, TASK-0013, TASK-0014, TASK-0015
 
 Description:

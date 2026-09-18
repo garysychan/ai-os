@@ -1155,6 +1155,7 @@ def _workflow_payload(definition: RuntimeWorkflowDefinition) -> dict[str, Any]:
         "max_steps": definition.max_steps,
         "max_fix_attempts": definition.max_fix_attempts,
         "approval_required": definition.approval_required,
+        "required_output_sections": list(definition.required_output_sections),
         "stages": [
             {
                 "name": stage.name,
@@ -1228,6 +1229,9 @@ def _load_workflow_definition(path: Path) -> RuntimeWorkflowDefinition:
         max_steps=int(payload["max_steps"]),
         max_fix_attempts=int(payload["max_fix_attempts"]),
         approval_required=bool(payload.get("approval_required", False)),
+        required_output_sections=tuple(
+            str(item) for item in payload.get("required_output_sections", ())
+        ),
     )
 
 

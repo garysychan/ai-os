@@ -91,6 +91,7 @@ def _session_payload(session: WorkflowSession) -> dict[str, object]:
         "max_fix_attempts": session.max_fix_attempts,
         "approval_evidence": list(session.approval_evidence),
         "controller_session_id": session.controller_session_id,
+        "definition_fingerprint": session.definition_fingerprint,
         "events": [
             {
                 "sequence": event.sequence,
@@ -149,4 +150,5 @@ def _session_from_payload(payload: object) -> WorkflowSession:
             if payload["controller_session_id"] is not None
             else None
         ),
+        definition_fingerprint=str(payload.get("definition_fingerprint", "")),
     )

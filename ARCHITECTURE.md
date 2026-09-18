@@ -212,3 +212,23 @@ When an implementation requires a material architectural change:
 5. Update this document.
 6. Reconcile workflow and agent implications.
 7. Resume execution.
+
+## 13. Executable Workflow Definition Packs
+
+The Workflow Engine registers four built-in, provider-neutral definitions:
+
+- `coding@1`: the compatible Developer, Tester, Reviewer and finite Fixer lifecycle.
+- `trace@1.0.0`: plan, evidence gathering, synthesis and independent review.
+- `investment@1.0.0`: scope, research, valuation, risk and independent review.
+- `deep-research@1.0.0`: plan, collection, triangulation, analysis, synthesis and review.
+
+Workflow packs live under `src/ai_os/workflows/packs/`. Each immutable definition declares its
+exact stage order, canonical Agent role, capability, permission, finite dispatch budget and output
+contract. The `linear_stage_plan` driver may dispatch only those declared stages and must use the
+Controller, Agent Runtime and Task State Machine; it has no direct Tool, Adapter or provider access.
+
+Definition registration and execution are default-deny. Unknown names, versions or drivers;
+role/capability/permission mismatches; non-semantic pack versions; invalid stage ordering; and
+undeclared Fix Cycles are rejected. Persistent checkpoints carry a SHA-256 identity of the exact
+name, version, stage plan, approval requirement, output contract and policy budgets, so incompatible
+definitions cannot resume stale execution.

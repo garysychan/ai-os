@@ -265,3 +265,36 @@ Full planning, implementation, testing, and review.
 Expanded research, multi-source validation, deeper architecture/risk analysis, and stronger review.
 
 The selected mode must never bypass mandatory security or approval gates.
+
+## 11. Executable Workflow Packs
+
+The governed Workflow Registry exposes `coding@1`, `trace@1.0.0`, `investment@1.0.0` and
+`deep-research@1.0.0`. A pack is selected by exact name and version; no fallback or implicit latest
+version is allowed.
+
+TRACE executes its declared `plan -> gather -> synthesize -> review` stages. Investment executes
+`scope -> research -> valuation -> risk -> review`. Deep Research executes
+`plan -> collect -> triangulate -> analyze -> synthesize -> review`. The final review stage is
+mandatory and may complete the Task only with an explicit `APPROVE` result and all State Machine
+completion gates satisfied.
+
+Before every dispatch, execution enforces cancellation, timezone-aware deadline and finite step
+budgets. Initial authorization enforces Task status, dependency completion, assigned Agents,
+canonical permissions and required approval evidence. A pack cannot call Tools or Adapters
+directly; any external operation continues through the existing Execution Engine, Tool Registry
+and Adapter policies.
+
+Investment and Deep Research declare an output contract that separates `facts`, `inference` and
+`assumptions`. TRACE declares `evidence`, `sources` and `conclusions`. Consumers must preserve these
+sections when producing or validating final domain output.
+
+CLI inspection and validation:
+
+```text
+aios workflow list
+aios workflow describe investment --version 1.0.0
+aios workflow validate path/to/definition.json
+aios workflow dry-run deep-research TASK-ID --version 1.0.0 --objective "..."
+```
+
+Dry-run performs governance and checkpoint creation without Agent dispatch or external side effects.
