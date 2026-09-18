@@ -580,7 +580,7 @@ Acceptance Criteria:
 - [ ] Bounded inspection and retention/pruning interfaces exist.
 - [ ] CLI supports init, status, migrate and read-only session inspection.
 - [ ] Existing in-memory stores and public APIs remain compatible.
-- [ ] Tests pass on Python 3.11 and Python 3.12.
+- [x] Tests pass on Python 3.11 and Python 3.12.
 - [ ] Coverage remains at or above the configured 80% threshold.
 - [ ] Control Plane Consistency Check has no new blocking finding.
 - [ ] Whole-branch Reviewer result is APPROVE.
@@ -700,6 +700,82 @@ Notes:
 - Post-reconciliation main Run 35234323265 passed on Python 3.11 and Python 3.12.
 - All acceptance criteria and required governance gates passed; TASK-0014 transitioned to `DONE`.
 - CR-2026-011 is closed as completed.
+
+## TASK-0015 — Implement Governed Workflow Engine
+
+Priority: P1
+Agent: Controller / Developer / Tester / Reviewer / Fixer
+Status: REVIEW
+Dependencies: TASK-0004, TASK-0005, TASK-0010, TASK-0011, TASK-0013, TASK-0014
+
+Description:
+Install a deterministic, versioned and default-deny Workflow Engine that loads, validates,
+registers and executes finite workflow definitions while preserving the authority of the Task
+State Machine, Controller, Agent Runtime, Execution Engine, Tool Registry and approval gates.
+
+Acceptance Criteria:
+- [x] Immutable Workflow definition, stage, session, event and result models exist.
+- [x] Workflow names, versions and stages are explicitly registered and uniquely resolved.
+- [x] Unknown Workflow names, versions, stages and duplicate registrations fail closed.
+- [x] Every executable stage declares one canonical Agent capability and required permission.
+- [x] Workflow definitions cannot grant Agent permissions or bypass Task assignment.
+- [x] Task status changes occur only through the existing State Machine.
+- [x] Agent dispatch occurs only through the existing Controller and Agent Runtime.
+- [x] External operations remain governed by Execution, Tool and Adapter policies.
+- [x] Finite stage, retry and Fix Cycle budgets are enforced.
+- [x] Cancellation and timezone-aware deadlines are enforced.
+- [x] Reviewer approval and completion gates cannot be bypassed.
+- [x] Immutable ordered session events and results are inspectable.
+- [x] In-memory persistence remains the default with an explicit persistent-store boundary.
+- [x] Resume rejects corrupt, terminal or definition-version-mismatched checkpoints.
+- [x] A built-in Coding lifecycle is registered without hard-coding provider behavior.
+- [x] TRACE, Investment and Deep Research definitions remain separately governed extensions.
+- [x] CLI supports workflow list, describe, validate, dry-run and session inspection.
+- [x] Existing State Machine, Controller, Execution, Tool and persistence APIs remain compatible.
+- [x] Tests pass on Python 3.11 and Python 3.12.
+- [x] Coverage remains at or above the configured 80% threshold.
+- [x] Control Plane Consistency Check has no new blocking finding.
+- [x] Whole-branch Reviewer result is APPROVE.
+- [ ] Protected Pull Request governance passes before merge.
+
+Artifacts:
+- CR-2026-012
+- `feature/workflow-engine`
+- Proposed `src/ai_os/workflows/`
+- Proposed `tests/workflows/`
+
+Risks:
+- Workflow orchestration could duplicate or bypass Controller and State Machine authority.
+- Declarative stages could widen Agent permissions through unvalidated metadata.
+- Resume could accept stale or corrupt definition versions.
+- Unbounded stages or Fix Cycles could create runaway execution.
+- Workflow code could become an unrestricted external side-effect gateway.
+
+Notes:
+- CR-2026-012 received explicit A2 Human Approval on 2026-09-18.
+- Dependency gate verified: TASK-0004, TASK-0005, TASK-0010, TASK-0011, TASK-0013 and
+  TASK-0014 are DONE.
+- Implementation started from authoritative `main` commit
+  `e25eda1e1d2bcddfd466303863ff5c9238116981`.
+- Initial scope is the Workflow Engine Core and a governed Coding lifecycle; provider-specific,
+  distributed and background execution remain outside the approved scope.
+- Workflow Engine Core, governed Coding lifecycle and CLI integration were implemented under
+  `src/ai_os/workflows/`, `tests/workflows/` and `tests/test_workflow_cli.py`.
+- Local Tester Validation passed 144 tests and 7 subtests with 86% branch coverage on Python 3.12;
+  Ruff, mypy, package build and all targeted Workflow tests passed.
+- Control Plane Consistency Check completed with `WARNING` and no blocking finding; all reported
+  warnings pre-date this Task and remain subject to approved Control Plane change control.
+- GitHub Python 3.11 and Python 3.12 Checks passed before whole-branch review.
+- Whole-branch Reviewer requested changes for definition/dispatch alignment, pre-dispatch budget
+  enforcement and cross-process CLI session inspection.
+- Reviewer Fix Cycle made `controller_lifecycle` definitions fail closed unless their stages match
+  the canonical lifecycle, added per-dispatch budget/deadline/cancellation guards with terminal
+  audit events, and added a JSON-backed Workflow session store for cross-process CLI inspection.
+- Fix Cycle validation passed 146 tests and 7 subtests with 85.41% branch coverage on both Python
+  3.11 and Python 3.12; Ruff, mypy, package build and Control Plane checks passed.
+- Whole-branch Reviewer revalidation at commit `eaa055c` returned `APPROVE`; RV-001, RV-002 and
+  RV-003 are closed with no new blocking finding.
+- TASK-0015 transitioned from `IN_PROGRESS` to `REVIEW` and is Ready for Review.
 
 ## Task Change Rules
 

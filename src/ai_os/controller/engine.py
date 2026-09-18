@@ -155,6 +155,7 @@ class ControllerEngine:
         clock: Callable[[], datetime] | None = None,
         max_fix_attempts: int = 2,
         approval_evidence: tuple[str, ...] = (),
+        dispatch_guard: Callable[[], None] | None = None,
     ) -> tuple[ControllerSession, Task]:
         """Run the synchronous implement/test/review lifecycle to a terminal outcome."""
         now = clock or (lambda: datetime.now(UTC))
@@ -167,6 +168,8 @@ class ControllerEngine:
             approval_evidence=approval_evidence,
         )
         current = task
+        if dispatch_guard is not None:
+            dispatch_guard()
         session, implementation = self.dispatch(
             session,
             current,
@@ -180,6 +183,8 @@ class ControllerEngine:
             return self._terminal_from_result(session, current, implementation, now())
 
         while True:
+            if dispatch_guard is not None:
+                dispatch_guard()
             session, test_result = self.dispatch(
                 session,
                 current,
@@ -191,7 +196,11 @@ class ControllerEngine:
             )
             if self.policy.result_is_blocking(test_result.status):
                 fixed = self._attempt_fix(
-                    session, current, dependency_states=dependency_states, timestamp=now()
+                    session,
+                    current,
+                    dependency_states=dependency_states,
+                    timestamp=now(),
+                    dispatch_guard=dispatch_guard,
                 )
                 if fixed is None:
                     return (
@@ -220,6 +229,8 @@ class ControllerEngine:
                 ),
                 occurred_at=now(),
             )
+            if dispatch_guard is not None:
+                dispatch_guard()
             session, review = self.dispatch(
                 session,
                 current,
@@ -242,7 +253,11 @@ class ControllerEngine:
                     occurred_at=now(),
                 )
                 fixed = self._attempt_fix(
-                    session, current, dependency_states=dependency_states, timestamp=now()
+                    session,
+                    current,
+                    dependency_states=dependency_states,
+                    timestamp=now(),
+                    dispatch_guard=dispatch_guard,
                 )
                 if fixed is None:
                     return (
@@ -314,8 +329,11 @@ class ControllerEngine:
         *,
         dependency_states: dict[str, TaskStatus],
         timestamp: datetime,
+        dispatch_guard: Callable[[], None] | None = None,
     ) -> ControllerSession | None:
         try:
+            if dispatch_guard is not None:
+                dispatch_guard()
             session, result = self.dispatch(
                 session,
                 task,
