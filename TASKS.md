@@ -705,7 +705,7 @@ Notes:
 
 Priority: P1
 Agent: Controller / Developer / Tester / Reviewer / Fixer
-Status: IN_PROGRESS
+Status: REVIEW
 Dependencies: TASK-0004, TASK-0005, TASK-0010, TASK-0011, TASK-0013, TASK-0014
 
 Description:
@@ -732,10 +732,10 @@ Acceptance Criteria:
 - [x] TRACE, Investment and Deep Research definitions remain separately governed extensions.
 - [x] CLI supports workflow list, describe, validate, dry-run and session inspection.
 - [x] Existing State Machine, Controller, Execution, Tool and persistence APIs remain compatible.
-- [ ] Tests pass on Python 3.11 and Python 3.12.
+- [x] Tests pass on Python 3.11 and Python 3.12.
 - [x] Coverage remains at or above the configured 80% threshold.
 - [x] Control Plane Consistency Check has no new blocking finding.
-- [ ] Whole-branch Reviewer result is APPROVE.
+- [x] Whole-branch Reviewer result is APPROVE.
 - [ ] Protected Pull Request governance passes before merge.
 
 Artifacts:
@@ -773,6 +773,9 @@ Notes:
   audit events, and added a JSON-backed Workflow session store for cross-process CLI inspection.
 - Fix Cycle validation passed 146 tests and 7 subtests with 85.41% branch coverage on both Python
   3.11 and Python 3.12; Ruff, mypy, package build and Control Plane checks passed.
+- Whole-branch Reviewer revalidation at commit `eaa055c` returned `APPROVE`; RV-001, RV-002 and
+  RV-003 are closed with no new blocking finding.
+- TASK-0015 transitioned from `IN_PROGRESS` to `REVIEW` and is Ready for Review.
 
 ## Task Change Rules
 

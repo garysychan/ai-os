@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -61,9 +62,30 @@ def test_workflow_validate_json(tmp_path: Path, capsys: pytest.CaptureFixture[st
 
 
 def test_workflow_dry_run_and_session_across_processes(tmp_path: Path) -> None:
-    repository = Path(__file__).parent.parent
+    source = Path(__file__).parent.parent
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    for name in (
+        "CONTROL_PLANE.md",
+        "AGENTS.md",
+        "PROJECT_RULES.md",
+        "ARCHITECTURE.md",
+        "WORKFLOW.md",
+        "TASKS.md",
+    ):
+        shutil.copy2(source / name, repository / name)
+    with (repository / "TASKS.md").open("a", encoding="utf-8") as tasks:
+        tasks.write(
+            "\n## TASK-9999 — Workflow CLI Fixture\n\n"
+            "Priority: P2\n"
+            "Agent: Developer / Tester / Reviewer / Fixer\n"
+            "Status: IN_PROGRESS\n"
+            "Dependencies: None\n\n"
+            "Description:\nValidate cross-process Workflow CLI persistence.\n\n"
+            "Acceptance Criteria:\n- [ ] Session is inspectable.\n"
+        )
     store = tmp_path / "workflow-store"
-    environment = os.environ | {"PYTHONPATH": str(repository / "src")}
+    environment = os.environ | {"PYTHONPATH": str(source / "src")}
     created = subprocess.run(
         [
             sys.executable,
@@ -72,7 +94,7 @@ def test_workflow_dry_run_and_session_across_processes(tmp_path: Path) -> None:
             "workflow",
             "dry-run",
             "coding",
-            "TASK-0015",
+            "TASK-9999",
             "--objective",
             "validate architecture",
             "--root",
