@@ -783,6 +783,72 @@ Notes:
 - All acceptance criteria and governance gates passed; TASK-0015 transitioned from `REVIEW` to
   `DONE` and CR-2026-012 is closed as completed.
 
+## TASK-0016 — Install Workflow Definition Packs
+
+Priority: P1
+Agent: Controller / Planner / Researcher / Developer / Tester / Reviewer / Fixer
+Status: TODO
+Dependencies: TASK-0004, TASK-0005, TASK-0010, TASK-0011, TASK-0012, TASK-0013, TASK-0014, TASK-0015
+
+Description:
+Install governed, versioned Workflow Definition Packs for TRACE, Investment and Deep Research on
+top of the approved Workflow Engine Core without widening Agent permissions, bypassing Controller
+authority or embedding provider-specific behavior.
+
+Acceptance Criteria:
+- [ ] TRACE, Investment and Deep Research definitions have explicit names and semantic versions.
+- [ ] Every declared stage maps to one canonical Agent role, capability and required permission.
+- [ ] Workflow-specific drivers execute only stages declared by the selected definition.
+- [ ] Unknown drivers, stages, versions and invalid stage ordering fail closed.
+- [ ] Workflow packs cannot grant permissions or bypass Task assignment and dependency gates.
+- [ ] External data, Tool and Adapter operations remain governed by their existing policies.
+- [ ] Stage, retry, deadline, cancellation and approval budgets are enforced before dispatch.
+- [ ] Investment and Deep Research outputs distinguish facts, inference and assumptions.
+- [ ] Checkpoints bind to the exact Workflow name, version, stage plan and policy budget.
+- [ ] CLI supports listing, describing, validating and dry-running each Workflow pack.
+- [ ] Coding Workflow and existing public APIs remain backward compatible.
+- [ ] Authoritative architecture and workflow documents reflect implemented behavior.
+- [ ] Positive, negative, permission, budget, checkpoint and cross-process tests exist.
+- [ ] Tests pass on Python 3.11 and Python 3.12.
+- [ ] Coverage remains at or above the configured 80% threshold.
+- [ ] Control Plane Consistency Check has no new blocking finding.
+- [ ] Whole-branch Reviewer result is APPROVE.
+- [ ] Protected Pull Request governance passes before merge.
+
+Artifacts:
+- CR-2026-013
+- Proposed `feature/workflow-definition-packs`
+- Proposed `src/ai_os/workflows/packs/`
+- Proposed `tests/workflows/packs/`
+
+Risks:
+- Declarative definitions could become an indirect permission-escalation path.
+- Research workflows could dispatch undeclared stages or ungoverned external operations.
+- Domain-specific stage semantics could weaken the Controller and Task State Machine boundaries.
+- Stale checkpoints could resume against incompatible Workflow pack versions.
+- Unbounded research or retry loops could create runaway execution and cost.
+
+Notes:
+- Change ID: CR-2026-013.
+- Requester: Repository Owner.
+- Date: 2026-09-18.
+- Target Document: `ARCHITECTURE.md`, `WORKFLOW.md`, `TASKS.md` and executable Workflow modules.
+- Change Type: WORKFLOW / ARCHITECTURE.
+- Classification: MINOR compatible capability extension with security-sensitive execution impact.
+- Reason: Install the governed TRACE, Investment and Deep Research extensions reserved by
+  TASK-0015.
+- Current State: `coding@1` is the only registered executable Workflow definition.
+- Proposed Change: Add three versioned definition packs and the minimum explicit driver boundary
+  required to execute only their declared stages.
+- Affected Documents: `ARCHITECTURE.md`, `WORKFLOW.md`, `TASKS.md`.
+- Affected Agents: Controller, Planner, Researcher, Developer, Tester, Reviewer and Fixer.
+- Impact: Adds domain workflows while preserving existing authority and public APIs.
+- Dependencies: TASK-0004, TASK-0005, TASK-0010 through TASK-0015 as listed above.
+- Approval Required: Explicit A2 Human Approval before implementation.
+- CR Status: PROPOSED / AWAITING APPROVAL.
+- No implementation or controlled architecture/workflow modification is authorized by this
+  registration commit.
+
 ## Task Change Rules
 
 1. Do not silently delete completed tasks.
