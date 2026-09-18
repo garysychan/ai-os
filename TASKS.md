@@ -26,7 +26,7 @@ This file is the current task/state registry. It is designed to be synchronized 
 
 Priority: P1
 Agent: Planner / Developer / Reviewer / etc.
-Status: TODO
+Status: IN_PROGRESS
 Dependencies: None
 
 Description:
@@ -817,9 +817,9 @@ Acceptance Criteria:
 
 Artifacts:
 - CR-2026-013
-- Proposed `feature/workflow-definition-packs`
-- Proposed `src/ai_os/workflows/packs/`
-- Proposed `tests/workflows/packs/`
+- `feature/workflow-definition-packs`
+- `src/ai_os/workflows/packs/`
+- `tests/workflows/packs/`
 
 Risks:
 - Declarative definitions could become an indirect permission-escalation path.
@@ -847,8 +847,8 @@ Notes:
 - Approval Required: Explicit A2 Human Approval before implementation.
 - Approval Evidence: Repository Owner issued `APPROVE CR-2026-013` on 2026-09-18.
 - CR Status: APPROVED / IMPLEMENTATION AUTHORIZED.
-- TASK-0016 remains `TODO`; implementation begins only after creation of the approved feature
-  branch and transition to `IN_PROGRESS`.
+- Implementation started from authoritative `main` commit
+  `ef28bdc` on `feature/workflow-definition-packs`; TASK-0016 transitioned to `IN_PROGRESS`.
 
 ## Task Change Rules
 
