@@ -960,9 +960,10 @@ Notes:
   permission and execution boundaries.
 - Dependencies: TASK-0005, TASK-0006 and TASK-0010 through TASK-0016 as listed above.
 - Approval Required: Explicit A2 Human Approval before implementation.
-- CR Status: PROPOSED / AWAITING APPROVAL.
-- No implementation, architecture update or feature branch is authorized until the Repository
-  Owner issues `APPROVE CR-2026-014`.
+- Approval Evidence: Repository Owner issued `APPROVE CR-2026-014` on 2026-09-20.
+- CR Status: APPROVED / IMPLEMENTATION AUTHORIZED.
+- TASK-0017 remains `TODO`; implementation begins only after the approved feature branch is
+  created and the Task transitions to `IN_PROGRESS`.
 
 ## Task Change Rules
 
