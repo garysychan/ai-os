@@ -17,6 +17,12 @@ from .models import (
     WorkflowStage,
     WorkflowStatus,
 )
+from .packs import (
+    deep_research_workflow,
+    investment_workflow,
+    trace_workflow,
+    workflow_packs,
+)
 from .policy import WorkflowPolicy
 from .registry import WorkflowRegistry
 from .store import InMemoryWorkflowStore, JsonWorkflowStore, WorkflowSessionStore
@@ -42,6 +48,10 @@ __all__ = [
     "WorkflowValidationError",
     "coding_workflow",
     "core_workflows",
+    "deep_research_workflow",
+    "investment_workflow",
+    "trace_workflow",
     "validate_checkpoint",
     "validate_definition",
+    "workflow_packs",
 ]

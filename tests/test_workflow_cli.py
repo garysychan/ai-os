@@ -18,6 +18,9 @@ def test_workflow_list_and_describe(capsys: pytest.CaptureFixture[str]) -> None:
     assert listed["workflows"][0]["name"] == "coding"
     assert main(["workflow", "describe", "coding", "--json"]) == 0
     assert json.loads(capsys.readouterr().out)["status"] == "PASS"
+    assert main(["workflow", "describe", "investment", "--version", "1.0.0", "--json"]) == 0
+    described = json.loads(capsys.readouterr().out)["workflows"][0]
+    assert described["required_output_sections"] == ["facts", "inference", "assumptions"]
 
 
 def test_workflow_validate_json(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -131,6 +134,61 @@ def test_workflow_dry_run_and_session_across_processes(tmp_path: Path) -> None:
     )
     inspected = json.loads(inspected_process.stdout)
     assert inspected["workflow_status"] == "CREATED"
+
+
+def test_workflow_pack_dry_run_across_processes(tmp_path: Path) -> None:
+    source = Path(__file__).parent.parent
+    repository = tmp_path / "pack-repository"
+    repository.mkdir()
+    for name in (
+        "CONTROL_PLANE.md",
+        "AGENTS.md",
+        "PROJECT_RULES.md",
+        "ARCHITECTURE.md",
+        "WORKFLOW.md",
+        "TASKS.md",
+    ):
+        shutil.copy2(source / name, repository / name)
+    with (repository / "TASKS.md").open("a", encoding="utf-8") as tasks:
+        tasks.write(
+            "\n## TASK-9998 — Workflow Pack CLI Fixture\n\n"
+            "Priority: P2\n"
+            "Agent: Planner / Researcher / Reviewer\n"
+            "Status: IN_PROGRESS\n"
+            "Dependencies: None\n\n"
+            "Description:\nValidate isolated Workflow Pack CLI execution.\n\n"
+            "Acceptance Criteria:\n- [ ] Pack dry-run is governed.\n"
+        )
+    store = tmp_path / "workflow-pack-store"
+    environment = os.environ | {"PYTHONPATH": str(source / "src")}
+    created = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "ai_os.cli",
+            "workflow",
+            "dry-run",
+            "investment",
+            "TASK-9998",
+            "--version",
+            "1.0.0",
+            "--objective",
+            "dry-run governed investment research",
+            "--root",
+            str(repository),
+            "--store",
+            str(store),
+            "--json",
+        ],
+        cwd=repository,
+        env=environment,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    payload = json.loads(created.stdout)
+    assert payload["workflow"] == "investment@1.0.0"
+    assert payload["external_side_effects"] is False
 
 
 def test_workflow_unknown_name_fails_closed(capsys: pytest.CaptureFixture[str]) -> None:

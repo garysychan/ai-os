@@ -94,3 +94,4 @@ class ExecutionResult:
     review_result: ReviewResult | None = None
     findings: tuple[str, ...] = ()
     errors: tuple[str, ...] = ()
+    output_sections: tuple[tuple[str, str], ...] = ()

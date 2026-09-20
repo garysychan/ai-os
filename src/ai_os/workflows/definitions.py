@@ -3,6 +3,7 @@
 from ai_os.agents import AgentRole, Capability, Permission
 
 from .models import WorkflowDefinition, WorkflowStage
+from .packs import workflow_packs
 
 
 def coding_workflow() -> WorkflowDefinition:
@@ -27,4 +28,4 @@ def coding_workflow() -> WorkflowDefinition:
 
 
 def core_workflows() -> tuple[WorkflowDefinition, ...]:
-    return (coding_workflow(),)
+    return (coding_workflow(), *workflow_packs())

@@ -50,6 +50,7 @@ class WorkflowDefinition:
     max_steps: int
     max_fix_attempts: int
     approval_required: bool = False
+    required_output_sections: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -80,6 +81,7 @@ class WorkflowSession:
     approval_evidence: tuple[str, ...] = ()
     events: tuple[WorkflowEvent, ...] = ()
     controller_session_id: str | None = None
+    definition_fingerprint: str = ""
 
 
 @dataclass(frozen=True)
@@ -87,3 +89,5 @@ class WorkflowResult:
     session: WorkflowSession
     task: Task
     controller_session: ControllerSession
+    required_output_sections: tuple[str, ...] = ()
+    output_sections: tuple[tuple[str, str], ...] = ()
