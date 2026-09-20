@@ -299,3 +299,14 @@ aios workflow dry-run deep-research TASK-ID --version 1.0.0 --objective "..."
 ```
 
 Dry-run performs governance and checkpoint creation without Agent dispatch or external side effects.
+
+## 12. Runtime Evidence Lifecycle
+
+Approved runtime boundaries may emit canonical evidence for accepted, started, completed, failed,
+cancelled, denied and timed-out outcomes. Events must be redacted before they cross the persistence
+boundary and remain append-only after storage. Each trace uses a contiguous sequence beginning at
+one; unknown schemas, malformed identifiers, duplicate events and reordered evidence fail closed.
+
+Audit and trace inspection is read-only and query-bounded. It must not change Task status, grant
+permissions, satisfy an approval gate, replay a Tool invocation or otherwise become an execution
+authority.

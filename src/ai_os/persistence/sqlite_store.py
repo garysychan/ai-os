@@ -12,6 +12,14 @@ from pathlib import Path
 from ai_os.adapters import AdapterAuditEvent
 from ai_os.controller import ControllerSession
 from ai_os.execution import ExecutionPlan, ExecutionSession
+from ai_os.observability import (
+    ObservabilityValidationError,
+    RuntimeEvent,
+    RuntimeEventFilter,
+    dump_runtime_event,
+    load_runtime_event,
+    sanitize_event,
+)
 
 from .codecs import (
     dump_adapter_audit,
@@ -127,6 +135,7 @@ class SQLiteRuntimeStore:
                 execution_plans=0,
                 execution_sessions=0,
                 adapter_audit_events=0,
+                runtime_events=0,
             )
         try:
             with self._connect(create=False) as connection:
@@ -144,6 +153,7 @@ class SQLiteRuntimeStore:
                         "execution_plans",
                         "execution_sessions",
                         "adapter_audit_events",
+                        "runtime_events",
                     )
                 }
         except sqlite3.DatabaseError as error:
@@ -157,6 +167,7 @@ class SQLiteRuntimeStore:
             execution_plans=counts["execution_plans"],
             execution_sessions=counts["execution_sessions"],
             adapter_audit_events=counts["adapter_audit_events"],
+            runtime_events=counts["runtime_events"],
         )
 
     def save_controller_session(self, session: ControllerSession) -> None:
@@ -300,6 +311,94 @@ class SQLiteRuntimeStore:
                 ).fetchall()
         return tuple(load_adapter_audit(row[0]) for row in rows)
 
+    def append_runtime_event(self, event: RuntimeEvent) -> None:
+        """Append sanitized evidence while enforcing strict per-trace ordering."""
+        try:
+            item = sanitize_event(event)
+            payload = dump_runtime_event(item)
+        except ObservabilityValidationError as error:
+            raise PersistenceIntegrityError(str(error)) from error
+        with self._ready_connection() as connection:
+            try:
+                with connection:
+                    row = connection.execute(
+                        "SELECT COALESCE(MAX(sequence), 0) FROM runtime_events WHERE trace_id = ?",
+                        (item.trace_id,),
+                    ).fetchone()
+                    expected = int(row[0]) + 1
+                    if item.sequence != expected:
+                        raise PersistenceIntegrityError(
+                            f"runtime event sequence must be {expected} for trace {item.trace_id}"
+                        )
+                    connection.execute(
+                        """INSERT INTO runtime_events(
+                             event_id, trace_id, sequence, task_id, execution_id,
+                             invocation_id, event_type, source, timestamp, payload
+                           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (
+                            item.event_id,
+                            item.trace_id,
+                            item.sequence,
+                            item.task_id,
+                            item.execution_id,
+                            item.invocation_id,
+                            item.event_type.value,
+                            item.source.value,
+                            item.timestamp.isoformat(),
+                            payload,
+                        ),
+                    )
+            except sqlite3.IntegrityError as error:
+                raise PersistenceIntegrityError(
+                    "runtime event conflicts with append-only evidence"
+                ) from error
+            except sqlite3.DatabaseError as error:
+                raise PersistenceError("runtime event append failed") from error
+
+    def get_runtime_event(self, event_id: str) -> RuntimeEvent:
+        payload = self._get_payload("runtime_events", "event_id", event_id)
+        try:
+            event = load_runtime_event(payload)
+        except ObservabilityValidationError as error:
+            raise PersistenceIntegrityError("stored runtime event is invalid") from error
+        if event.event_id != event_id:
+            raise PersistenceIntegrityError("runtime event identifier mismatch")
+        return event
+
+    def list_runtime_events(
+        self, *, filters: RuntimeEventFilter | None = None, limit: int = 100
+    ) -> tuple[RuntimeEvent, ...]:
+        bounded = self._bounded_limit(limit)
+        selected = filters or RuntimeEventFilter()
+        clauses: list[str] = []
+        values: list[object] = []
+        for column, value in (
+            ("task_id", selected.task_id),
+            ("trace_id", selected.trace_id),
+            ("execution_id", selected.execution_id),
+            ("invocation_id", selected.invocation_id),
+            ("event_type", selected.event_type.value if selected.event_type else None),
+            ("source", selected.source.value if selected.source else None),
+        ):
+            if value is not None:
+                if not value.strip():
+                    raise PersistenceIntegrityError(f"{column} filter must not be empty")
+                clauses.append(f"{column} = ?")
+                values.append(value)
+        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+        values.append(bounded)
+        with self._ready_connection() as connection:
+            rows = connection.execute(
+                "SELECT payload FROM runtime_events"
+                + where
+                + " ORDER BY timestamp, trace_id, sequence LIMIT ?",
+                tuple(values),
+            ).fetchall()
+        try:
+            return tuple(load_runtime_event(row[0]) for row in rows)
+        except ObservabilityValidationError as error:
+            raise PersistenceIntegrityError("stored runtime event is invalid") from error
+
     def prune(self, *, before: datetime, limit: int = 100) -> PruneResult:
         if before.tzinfo is None or before.utcoffset() is None:
             raise PersistenceIntegrityError("prune timestamp must be timezone-aware")
@@ -317,6 +416,9 @@ class SQLiteRuntimeStore:
                     audit = self._delete_limited(
                         connection, "adapter_audit_events", "timestamp", cutoff, bounded
                     )
+                    runtime = self._delete_limited(
+                        connection, "runtime_events", "timestamp", cutoff, bounded
+                    )
                     plans = connection.execute(
                         "DELETE FROM execution_plans WHERE plan_id IN ("
                         "SELECT p.plan_id FROM execution_plans p "
@@ -327,7 +429,7 @@ class SQLiteRuntimeStore:
                     ).rowcount
             except sqlite3.DatabaseError as error:
                 raise PersistenceIntegrityError("prune transaction failed") from error
-        return PruneResult(controller, plans, execution, audit)
+        return PruneResult(controller, plans, execution, audit, runtime)
 
     @contextmanager
     def _connect(self, *, create: bool) -> Iterator[sqlite3.Connection]:
@@ -374,6 +476,7 @@ class SQLiteRuntimeStore:
             ("controller_sessions", "session_id"),
             ("execution_plans", "plan_id"),
             ("execution_sessions", "execution_id"),
+            ("runtime_events", "event_id"),
         }
         if (table, key) not in allowed:
             raise PersistenceIntegrityError("invalid repository lookup")
@@ -421,6 +524,7 @@ class SQLiteRuntimeStore:
             "execution_plans",
             "execution_sessions",
             "adapter_audit_events",
+            "runtime_events",
         }
         if table not in allowed:
             raise PersistenceIntegrityError("invalid status table")
@@ -444,6 +548,7 @@ class SQLiteRuntimeStore:
             ("controller_sessions", "updated_at"),
             ("execution_sessions", "updated_at"),
             ("adapter_audit_events", "timestamp"),
+            ("runtime_events", "timestamp"),
         }
         if (table, timestamp_column) not in allowed:
             raise PersistenceIntegrityError("invalid prune target")

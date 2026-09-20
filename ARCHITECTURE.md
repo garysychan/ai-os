@@ -237,3 +237,19 @@ Investment and Deep Research Agent results carry structured output sections. The
 requires non-empty `facts`, `inference` and `assumptions` before the Reviewer may be dispatched;
 TRACE similarly requires `evidence`, `sources` and `conclusions`. Missing sections terminate the
 Controller session as escalated rather than treating a metadata declaration as completed output.
+
+## 14. Runtime Observability and Audit Trail
+
+`src/ai_os/observability/` defines a provider-neutral evidence boundary over existing Controller,
+Execution, Adapter, Tool and Workflow records. It does not authorize work, mutate task state or
+replace the owning runtime components.
+
+Every canonical runtime event has a schema version, immutable event identity, strict per-trace
+sequence, timezone-aware timestamp, source, lifecycle outcome, Task ID, trace ID and optional
+session, Workflow, execution, invocation and Agent correlation. Unknown versions and event values
+fail closed. Evidence is redacted before persistence, and the SQLite Runtime Store enforces
+append-only identity and ordering constraints.
+
+Runtime event queries are explicitly bounded and may filter only declared indexed fields. Trace
+reconstruction is an ordered evidence view, not replay authority. Observability failures must not
+silently approve, repeat or alter runtime execution.

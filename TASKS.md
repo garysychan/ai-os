@@ -886,7 +886,7 @@ Notes:
 
 Priority: P1
 Agent: Controller / Planner / Developer / Tester / Reviewer / Fixer
-Status: TODO
+Status: IN_PROGRESS
 Dependencies: TASK-0005, TASK-0006, TASK-0010, TASK-0011, TASK-0012, TASK-0013, TASK-0014, TASK-0015, TASK-0016
 
 Description:
@@ -895,32 +895,32 @@ Execution, Adapter, Tool, persistence and Workflow evidence without creating a s
 authority or exposing secrets.
 
 Acceptance Criteria:
-- [ ] A canonical immutable runtime event envelope identifies event, timestamp, task, session,
+- [x] A canonical immutable runtime event envelope identifies event, timestamp, task, session,
   workflow, execution, Agent and correlation context where applicable.
-- [ ] Existing Controller, Execution, Adapter, Tool and Workflow evidence is normalized through
+- [x] Existing Controller, Execution, Adapter, Tool and Workflow evidence is normalized through
   explicit integration boundaries without duplicating their decision authority.
-- [ ] Lifecycle events cover accepted, started, completed, failed, cancelled, denied and timed-out
+- [x] Lifecycle events cover accepted, started, completed, failed, cancelled, denied and timed-out
   outcomes where applicable.
-- [ ] Permission and approval decisions are traceable without recording credentials or sensitive
+- [x] Permission and approval decisions are traceable without recording credentials or sensitive
   payloads.
-- [ ] Redaction is fail-closed, deterministic and applied before persistence or presentation.
-- [ ] Audit records are append-only and reject invalid ordering, malformed identifiers and
+- [x] Redaction is fail-closed, deterministic and applied before persistence or presentation.
+- [x] Audit records are append-only and reject invalid ordering, malformed identifiers and
   integrity violations.
-- [ ] SQLite persistence supports atomic event append, bounded queries, retention and reopen
+- [x] SQLite persistence supports atomic event append, bounded queries, retention and reopen
   recovery through the existing Persistent Runtime Store boundary.
-- [ ] Correlation preserves `task_id`, `session_id`, `workflow_session_id`, `execution_id`,
+- [x] Correlation preserves `task_id`, `session_id`, `workflow_session_id`, `execution_id`,
   `invocation_id` and `trace_id` relationships when those identifiers exist.
-- [ ] CLI supports bounded audit listing, filtered event inspection and trace reconstruction in
+- [x] CLI supports bounded audit listing, filtered event inspection and trace reconstruction in
   human-readable and JSON formats.
-- [ ] Unknown event types, unsupported schema versions and unauthorized queries fail closed.
-- [ ] Observability failure cannot silently authorize, replay or alter an execution outcome.
-- [ ] Existing public APIs remain backward compatible unless a separately approved change states
+- [x] Unknown event types, unsupported schema versions and unauthorized queries fail closed.
+- [x] Observability failure cannot silently authorize, replay or alter an execution outcome.
+- [x] Existing public APIs remain backward compatible unless a separately approved change states
   otherwise.
-- [ ] Positive, negative, redaction, permission, ordering, corruption, persistence and
+- [x] Positive, negative, redaction, permission, ordering, corruption, persistence and
   cross-process tests exist.
 - [ ] Tests pass on Python 3.11 and Python 3.12.
-- [ ] Coverage remains at or above the configured 80% threshold.
-- [ ] Control Plane Consistency Check has no new blocking finding.
+- [x] Coverage remains at or above the configured 80% threshold.
+- [x] Control Plane Consistency Check has no new blocking finding.
 - [ ] Whole-branch Reviewer result is APPROVE.
 - [ ] Protected Pull Request governance passes before merge.
 
@@ -962,8 +962,17 @@ Notes:
 - Approval Required: Explicit A2 Human Approval before implementation.
 - Approval Evidence: Repository Owner issued `APPROVE CR-2026-014` on 2026-09-20.
 - CR Status: APPROVED / IMPLEMENTATION AUTHORIZED.
-- TASK-0017 remains `TODO`; implementation begins only after the approved feature branch is
-  created and the Task transitions to `IN_PROGRESS`.
+- Implementation was authorized to begin on the approved feature branch.
+- Implementation started from authoritative `main` commit `570b20b` on
+  `feature/runtime-observability-audit`; TASK-0017 transitioned to `IN_PROGRESS`.
+- Runtime Observability Core, explicit evidence normalizers, SQLite schema v2 persistence and
+  `audit`/`trace` CLI inspection are installed without adding execution authority.
+- Local Python 3.12 validation passed 178 tests and 7 subtests with 85.55% branch coverage; Ruff,
+  strict mypy and package build passed.
+- Control Plane Consistency Check completed with `WARNING` and no new blocking finding; all
+  reported warnings pre-date TASK-0017 and remain governed separately.
+- Python 3.11 CI, independent Whole-branch Reviewer validation and protected Pull Request
+  governance remain pending.
 
 ## Task Change Rules
 
