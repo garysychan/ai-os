@@ -46,7 +46,8 @@ def validate_event(event: RuntimeEvent, *, allow_unsequenced: bool = False) -> R
         try:
             AgentRole(event.agent_role.strip())
         except ValueError as error:
-            raise ObservabilityValidationError("agent_role must be a canonical AgentRole") from error
+            message = "agent_role must be a canonical AgentRole"
+            raise ObservabilityValidationError(message) from error
     keys = [key for key, _ in event.correlation]
     if len(keys) != len(set(keys)):
         raise ObservabilityValidationError("correlation keys must be unique")

@@ -1012,6 +1012,9 @@ Notes:
 - Whole-branch Final Reviewer Revalidation Round 4 returned `APPROVE` for implementation commit
   `4032e815c924d18ff4794c79af2f09b4efc7b326`; no unresolved security or consistency blocker
   remains. Required GitHub Python 3.11/3.12 and protected Pull Request gates remain pending.
+- The first post-review Python 3.11/3.12 run failed only Ruff E501 because one validation line was
+  101 characters against the 100-character limit. The CI Fix Cycle split that statement without
+  changing runtime behavior; fresh Python 3.11/3.12 checks remain required.
 
 ## Task Change Rules
 
