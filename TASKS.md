@@ -880,6 +880,7 @@ Notes:
 - Post-merge main Control Plane Check Run 35494646575 passed on Python 3.11 and Python 3.12.
 - All acceptance criteria and required governance gates passed; TASK-0016 transitioned from
   `REVIEW` to `DONE` and CR-2026-013 is closed as completed.
+- CR Final Status: CLOSED / COMPLETED.
 
 ## Task Change Rules
 
