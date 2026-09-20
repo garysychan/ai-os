@@ -90,3 +90,4 @@ class WorkflowResult:
     task: Task
     controller_session: ControllerSession
     required_output_sections: tuple[str, ...] = ()
+    output_sections: tuple[tuple[str, str], ...] = ()

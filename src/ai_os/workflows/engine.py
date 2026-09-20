@@ -140,6 +140,7 @@ class WorkflowEngine:
         )
         definition = self.registry.resolve(workflow, version)
         dispatched_steps = 0
+        output_sections: tuple[tuple[str, str], ...] = ()
 
         def guard_dispatch() -> None:
             nonlocal dispatched_steps
@@ -165,7 +166,7 @@ class WorkflowEngine:
                     dispatch_guard=guard_dispatch,
                 )
             elif definition.driver == "linear_stage_plan":
-                controller_session, updated_task = self._run_linear_stage_plan(
+                controller_session, updated_task, output_sections = self._run_linear_stage_plan(
                     task,
                     definition,
                     objective,
@@ -226,6 +227,7 @@ class WorkflowEngine:
             updated_task,
             controller_session,
             definition.required_output_sections,
+            output_sections,
         )
 
     def _run_linear_stage_plan(
@@ -238,7 +240,7 @@ class WorkflowEngine:
         now: Callable[[], datetime],
         approval_evidence: tuple[str, ...],
         guard_dispatch: Callable[[], None],
-    ) -> tuple[ControllerSession, Task]:
+    ) -> tuple[ControllerSession, Task, tuple[tuple[str, str], ...]]:
         controller_session = self.controller.start(
             task,
             objective,
@@ -249,9 +251,21 @@ class WorkflowEngine:
         )
         current = task
         evidence: list[str] = []
+        output: dict[str, str] = {}
         for stage in definition.stages:
-            guard_dispatch()
             if stage.capability.value == "review":
+                invalid = self._output_contract_failure(definition, output)
+                if invalid is not None:
+                    return (
+                        self.controller.terminate(
+                            controller_session,
+                            ControllerOutcome.ESCALATED,
+                            timestamp=now(),
+                            reason=invalid,
+                        ),
+                        current,
+                        tuple(output.items()),
+                    )
                 controller_session, current = self.controller.transition(
                     controller_session,
                     current,
@@ -265,6 +279,7 @@ class WorkflowEngine:
                     ),
                     occurred_at=now(),
                 )
+            guard_dispatch()
             controller_session, result = self.controller.dispatch(
                 controller_session,
                 current,
@@ -277,6 +292,11 @@ class WorkflowEngine:
                 evidence=(f"workflow-stage:{stage.name}",),
             )
             evidence.extend(result.handoff.evidence or (result.summary,))
+            for name, content in result.output_sections:
+                normalized_name = name.strip()
+                normalized_content = content.strip()
+                if normalized_name and normalized_content:
+                    output[normalized_name] = normalized_content
             if result.status is not ExecutionStatus.SUCCESS:
                 outcome = {
                     ExecutionStatus.BLOCKED: ControllerOutcome.BLOCKED,
@@ -292,6 +312,7 @@ class WorkflowEngine:
                         findings=result.findings or result.errors,
                     ),
                     current,
+                    tuple(output.items()),
                 )
             if stage.capability.value == "review":
                 if result.review_result is not ReviewResult.APPROVE:
@@ -304,6 +325,7 @@ class WorkflowEngine:
                             findings=result.findings,
                         ),
                         current,
+                        tuple(output.items()),
                     )
                 controller_session, current = self.controller.transition(
                     controller_session,
@@ -327,7 +349,19 @@ class WorkflowEngine:
                 reason="All declared Workflow stages completed",
             ),
             current,
+            tuple(output.items()),
         )
+
+    @staticmethod
+    def _output_contract_failure(
+        definition: WorkflowDefinition, output: dict[str, str]
+    ) -> str | None:
+        missing = tuple(
+            section for section in definition.required_output_sections if not output.get(section)
+        )
+        if missing:
+            return "Workflow output contract is missing: " + ", ".join(missing)
+        return None
 
     def _record_abort(
         self,

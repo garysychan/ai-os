@@ -855,6 +855,14 @@ Notes:
   formatting, mypy, package build and cross-process Workflow Pack dry-run passed.
 - Control Plane Consistency Check completed with `WARNING` and no new blocking finding; reported
   warnings pre-date TASK-0016 and remain governed separately.
+- Initial whole-branch Reviewer validation returned `REQUEST_CHANGES`: the Reviewer dispatch guard
+  was not adjacent to dispatch, Pack stage names/order were not canonicalized, and domain output
+  sections were declared but not validated against actual Agent results.
+- Reviewer Fix Cycle moved the deadline/cancellation/step guard immediately before every dispatch,
+  default-denied unknown or reordered Pack stages, and added structured non-empty output validation
+  before Reviewer dispatch.
+- Post-fix local validation passed 160 tests and 7 subtests with 85.63% branch coverage; Ruff,
+  formatting and mypy passed. Control Plane status remains `WARNING` with no new blocker.
 
 ## Task Change Rules
 

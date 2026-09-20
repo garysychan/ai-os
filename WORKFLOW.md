@@ -285,8 +285,9 @@ directly; any external operation continues through the existing Execution Engine
 and Adapter policies.
 
 Investment and Deep Research declare an output contract that separates `facts`, `inference` and
-`assumptions`. TRACE declares `evidence`, `sources` and `conclusions`. Consumers must preserve these
-sections when producing or validating final domain output.
+`assumptions`. TRACE declares `evidence`, `sources` and `conclusions`. Before Reviewer dispatch, the
+Workflow Engine verifies that every required section contains non-empty Agent output; missing
+sections terminate the session as escalated.
 
 CLI inspection and validation:
 

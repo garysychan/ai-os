@@ -45,6 +45,28 @@ def test_research_output_contract_distinguishes_evidence_types() -> None:
         ),
         (
             replace(
+                investment_workflow(),
+                stages=(
+                    *investment_workflow().stages[:2],
+                    investment_workflow().stages[3],
+                    investment_workflow().stages[2],
+                    investment_workflow().stages[4],
+                ),
+            ),
+            "canonical stage order",
+        ),
+        (
+            replace(
+                trace_workflow(),
+                stages=(
+                    replace(trace_workflow().stages[0], name="unknown-stage"),
+                    *trace_workflow().stages[1:],
+                ),
+            ),
+            "canonical stage order",
+        ),
+        (
+            replace(
                 trace_workflow(),
                 stages=(
                     WorkflowStage(

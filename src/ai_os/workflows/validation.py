@@ -25,6 +25,11 @@ _ROLE_CAPABILITY = {
     AgentRole.FIXER: Capability.FIX,
 }
 _RESEARCH_OUTPUT_SECTIONS = frozenset({"facts", "inference", "assumptions"})
+_PACK_STAGE_PLANS = {
+    "trace": ("plan", "gather", "synthesize", "review"),
+    "investment": ("scope", "research", "valuation", "risk", "review"),
+    "deep-research": ("plan", "collect", "triangulate", "analyze", "synthesize", "review"),
+}
 _CONTROLLER_LIFECYCLE = (
     ("implement", AgentRole.DEVELOPER, Capability.IMPLEMENT, Permission.MODIFY_CODE),
     ("test", AgentRole.TESTER, Capability.TEST, Permission.READ_CONTROL),
@@ -81,6 +86,13 @@ def validate_definition(definition: WorkflowDefinition) -> None:
         allowed = {Capability.PLAN, Capability.RESEARCH, Capability.REVIEW}
         if any(stage.capability not in allowed for stage in definition.stages):
             raise WorkflowValidationError("linear_stage_plan contains an invalid stage ordering")
+        expected_plan = _PACK_STAGE_PLANS.get(definition.name)
+        if expected_plan is None:
+            raise WorkflowValidationError(f"unknown Workflow pack: {definition.name}")
+        if tuple(stage.name for stage in definition.stages) != expected_plan:
+            raise WorkflowValidationError(
+                f"{definition.name} requires canonical stage order: " + " -> ".join(expected_plan)
+            )
     if definition.name in {"investment", "deep-research"} and not (
         set(definition.required_output_sections) >= _RESEARCH_OUTPUT_SECTIONS
     ):

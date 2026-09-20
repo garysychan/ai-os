@@ -232,3 +232,8 @@ role/capability/permission mismatches; non-semantic pack versions; invalid stage
 undeclared Fix Cycles are rejected. Persistent checkpoints carry a SHA-256 identity of the exact
 name, version, stage plan, approval requirement, output contract and policy budgets, so incompatible
 definitions cannot resume stale execution.
+
+Investment and Deep Research Agent results carry structured output sections. The Workflow Engine
+requires non-empty `facts`, `inference` and `assumptions` before the Reviewer may be dispatched;
+TRACE similarly requires `evidence`, `sources` and `conclusions`. Missing sections terminate the
+Controller session as escalated rather than treating a metadata declaration as completed output.
