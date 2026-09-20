@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
+from ai_os.agents import AgentRole, Permission
+
 
 class RuntimeEventType(StrEnum):
     ACCEPTED = "ACCEPTED"
@@ -56,3 +58,9 @@ class RuntimeEventFilter:
     invocation_id: str | None = None
     event_type: RuntimeEventType | None = None
     source: RuntimeEventSource | None = None
+
+
+@dataclass(frozen=True)
+class AuditQueryContext:
+    actor_role: AgentRole
+    permission: Permission

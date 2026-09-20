@@ -105,6 +105,29 @@ class ControllerEngineTests(unittest.TestCase):
             )
         self.assertEqual(denied, [("TASK-0010", "ControllerPolicyError")])
 
+    def test_dispatch_policy_denial_is_emitted(self) -> None:
+        denied: list[tuple[str, str]] = []
+        registry = AgentRegistry(canonical_agents())
+        engine = ControllerEngine(
+            AgentRuntime(AgentRouter(registry)),
+            denial_sink=lambda task_id, _timestamp, reason: denied.append((task_id, reason)),
+        )
+        task = task_in(TaskStatus.IN_PROGRESS)
+        session = engine.start(task, "coordinate", dependency_states=DEPENDENCIES, started_at=NOW)
+        terminal = engine.terminate(
+            session, ControllerOutcome.CANCELLED, timestamp=NOW, reason="cancelled"
+        )
+        with self.assertRaises(ControllerPolicyError):
+            engine.dispatch(
+                terminal,
+                task,
+                Capability.IMPLEMENT,
+                actor="Developer",
+                dependency_states=DEPENDENCIES,
+                timestamp=NOW,
+            )
+        self.assertEqual(denied, [("TASK-0010", "ControllerPolicyError")])
+
     def test_dispatch_uses_runtime_and_records_ordered_trace(self) -> None:
         task = task_in(TaskStatus.IN_PROGRESS)
         session = self.engine.start(

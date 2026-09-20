@@ -3,9 +3,13 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
+
 from ai_os.adapters import AdapterInvocation, AdapterRegistry, AdapterService, ReadOnlyFileAdapter
 from ai_os.agents import AgentRole, Capability, Permission
 from ai_os.observability import (
+    AuditQueryContext,
+    ObservabilityAuthorizationError,
     ObservabilityService,
     RuntimeEvent,
     RuntimeEventSource,
@@ -13,6 +17,8 @@ from ai_os.observability import (
 )
 from ai_os.persistence import SQLiteRuntimeStore, StoreConfig
 from ai_os.tasks import AcceptanceCriterion, Priority, Task, TaskStatus
+
+QUERY = AuditQueryContext(AgentRole.REVIEWER, Permission.READ_CONTROL)
 
 
 def test_service_records_and_reconstructs_read_only_trace(tmp_path: Path) -> None:
@@ -32,8 +38,14 @@ def test_service_records_and_reconstructs_read_only_trace(tmp_path: Path) -> Non
             agent_role="Developer",
         )
     )
-    assert service.get(recorded.event_id) == recorded
-    assert service.trace("trace-1") == (recorded,)
+    assert service.get(recorded.event_id, context=QUERY) == recorded
+    assert service.trace("trace-1", context=QUERY) == (recorded,)
+
+    with pytest.raises(ObservabilityAuthorizationError):
+        service.trace(
+            "trace-1",
+            context=AuditQueryContext(AgentRole.DEVELOPER, Permission.MODIFY_CODE),
+        )
 
 
 def test_real_adapter_boundary_persists_correlated_redacted_event(tmp_path: Path) -> None:
@@ -68,7 +80,7 @@ def test_real_adapter_boundary_persists_correlated_redacted_event(tmp_path: Path
     )
     result, _ = adapter.execute(task, invocation)
     assert result.summary
-    events = observability.trace("trace-runtime")
+    events = observability.trace("trace-runtime", context=QUERY)
     assert len(events) == 1
     assert events[0].invocation_id == "invocation-1"
     assert "never-store" not in repr(events)

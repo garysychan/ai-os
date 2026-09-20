@@ -5,8 +5,10 @@ from __future__ import annotations
 import re
 from dataclasses import replace
 
-from .errors import ObservabilityValidationError
-from .models import RuntimeEvent
+from ai_os.agents import Permission, PermissionPolicy
+
+from .errors import ObservabilityAuthorizationError, ObservabilityValidationError
+from .models import AuditQueryContext, RuntimeEvent
 from .redaction import redact_pairs, redact_text
 
 _IDENTIFIERS = (
@@ -67,3 +69,10 @@ def sanitize_event(event: RuntimeEvent, *, allow_unsequenced: bool = False) -> R
 
 def _clean_optional(value: str | None) -> str | None:
     return value.strip() if value is not None else None
+
+
+def authorize_query(context: AuditQueryContext) -> None:
+    if context.permission is not Permission.READ_CONTROL:
+        raise ObservabilityAuthorizationError("runtime evidence query requires read_control")
+    if not PermissionPolicy().allows(context.actor_role, Permission.READ_CONTROL):
+        raise ObservabilityAuthorizationError("actor is not authorized to inspect runtime evidence")

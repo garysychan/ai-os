@@ -81,3 +81,21 @@ def test_unclassified_paths_and_private_content_are_default_redacted() -> None:
     assert result.summary == "[REDACTED]"
     assert result.evidence == ("[REDACTED]", "[REDACTED]")
     assert result.correlation == (("stage", "REVIEWING"), ("unknown", "[REDACTED]"))
+
+
+def test_allowlisted_correlation_keys_use_key_specific_grammars() -> None:
+    result = sanitize_event(
+        replace(
+            event(),
+            correlation=(
+                ("stage", "home/alice/.ssh/id_rsa"),
+                ("trace_id", "customer-private-secret"),
+                ("source_sequence", "2"),
+            ),
+        )
+    )
+    assert result.correlation == (
+        ("stage", "[REDACTED]"),
+        ("trace_id", "[REDACTED]"),
+        ("source_sequence", "2"),
+    )

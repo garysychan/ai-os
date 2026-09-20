@@ -19,22 +19,11 @@ _KEYS = (
     "provider_payload",
     "private_key",
 )
-_SAFE_CORRELATION_KEYS = frozenset(
-    {
-        "attempt",
-        "execution_id",
-        "invocation_id",
-        "plan_id",
-        "session_id",
-        "source_sequence",
-        "stage",
-        "step_id",
-        "task_id",
-        "trace_id",
-        "workflow_session_id",
-    }
-)
-_SAFE_VALUE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$")
+_SAFE_CORRELATION_PATTERNS = {
+    "attempt": re.compile(r"^[1-9][0-9]{0,8}$"),
+    "source_sequence": re.compile(r"^[1-9][0-9]{0,8}$"),
+    "stage": re.compile(r"^[A-Z][A-Z0-9_]{0,63}$"),
+}
 
 
 def sensitive_key(value: str) -> bool:
@@ -55,6 +44,7 @@ def redact_pairs(values: tuple[tuple[str, str], ...]) -> tuple[tuple[str, str], 
         clean_key = key.strip()
         if not clean_key:
             raise ObservabilityValidationError("correlation keys must not be empty")
-        is_safe = clean_key in _SAFE_CORRELATION_KEYS and _SAFE_VALUE.fullmatch(value) is not None
+        pattern = _SAFE_CORRELATION_PATTERNS.get(clean_key)
+        is_safe = pattern is not None and pattern.fullmatch(value) is not None
         redacted.append((clean_key, value if is_safe else "[REDACTED]"))
     return tuple(redacted)

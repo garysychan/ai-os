@@ -11,3 +11,7 @@ class ObservabilityValidationError(ObservabilityError):
 
 class ObservabilityNotFoundError(ObservabilityError):
     """Raised when requested evidence does not exist."""
+
+
+class ObservabilityAuthorizationError(ObservabilityError):
+    """Raised when an audit query lacks explicit read authority."""

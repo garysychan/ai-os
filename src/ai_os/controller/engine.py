@@ -98,10 +98,14 @@ class ControllerEngine:
         review_result: ReviewResult | None = None,
         evidence: tuple[str, ...] = (),
     ) -> tuple[ControllerSession, ExecutionResult]:
-        self.policy.require_dispatchable(session)
-        stage = self.policy.stage_for(capability)
-        if stage is ControllerStage.FIXING:
-            self.policy.require_fix_available(session)
+        try:
+            self.policy.require_dispatchable(session)
+            stage = self.policy.stage_for(capability)
+            if stage is ControllerStage.FIXING:
+                self.policy.require_fix_available(session)
+        except ControllerError as error:
+            self._deny(task.task_id, timestamp, type(error).__name__)
+            raise
         dispatched = append_event(
             session,
             event_type=ControllerEventType.AGENT_DISPATCHED,

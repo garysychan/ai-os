@@ -309,4 +309,5 @@ one; unknown schemas, malformed identifiers, duplicate events and reordered evid
 
 Audit and trace inspection is read-only and query-bounded. It must not change Task status, grant
 permissions, satisfy an approval gate, replay a Tool invocation or otherwise become an execution
-authority.
+authority. Every service or CLI query must carry an explicit canonical Agent role authorized for
+`read_control`; missing or incompatible query authority fails closed before repository access.

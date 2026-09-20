@@ -44,13 +44,30 @@ def test_cross_process_audit_and_trace_inspection(tmp_path: Path) -> None:
     database = tmp_path / "runtime.sqlite3"
     seed(database)
     code, audit = run_cli(
-        "audit", "list", "--database", str(database), "--task-id", "TASK-0017", "--json"
+        "audit",
+        "list",
+        "--database",
+        str(database),
+        "--task-id",
+        "TASK-0017",
+        "--actor-role",
+        "Reviewer",
+        "--json",
     )
     assert code == 0
     assert audit["status"] == "PASS"
     assert len(audit["events"]) == 1  # type: ignore[arg-type]
 
-    code, trace = run_cli("trace", "show", "trace-1", "--database", str(database), "--json")
+    code, trace = run_cli(
+        "trace",
+        "show",
+        "trace-1",
+        "--database",
+        str(database),
+        "--actor-role",
+        "Reviewer",
+        "--json",
+    )
     assert code == 0
     assert trace["events"][0]["event_id"] == "event-1"  # type: ignore[index]
 
@@ -58,10 +75,28 @@ def test_cross_process_audit_and_trace_inspection(tmp_path: Path) -> None:
 def test_cli_unknown_event_fails_closed(tmp_path: Path) -> None:
     database = tmp_path / "runtime.sqlite3"
     seed(database)
-    code, payload = run_cli("audit", "show", "missing", "--database", str(database), "--json")
+    code, payload = run_cli(
+        "audit",
+        "show",
+        "missing",
+        "--database",
+        str(database),
+        "--actor-role",
+        "Reviewer",
+        "--json",
+    )
     assert code == 2
     assert payload["status"] == "FAIL"
 
-    code, payload = run_cli("trace", "show", "missing", "--database", str(database), "--json")
+    code, payload = run_cli(
+        "trace",
+        "show",
+        "missing",
+        "--database",
+        str(database),
+        "--actor-role",
+        "Reviewer",
+        "--json",
+    )
     assert code == 2
     assert payload["status"] == "FAIL"

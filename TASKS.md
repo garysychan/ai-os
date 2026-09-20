@@ -994,6 +994,15 @@ Notes:
   Controller, Execution, Tool and Workflow authorization denials through failure-isolated sinks.
 - Round 2 local validation passed 195 tests and 7 subtests with 84.98% branch coverage; Ruff,
   strict mypy, package build, Task Schema and Control Plane checks passed with no new blocker.
+- Final Reviewer revalidation after Round 2 remained `REQUEST_CHANGES`: correlation values used a
+  generic permissive grammar, Controller dispatch policy denials bypassed the denial sink, and
+  service/CLI audit reads lacked an explicit query authorization context.
+- Reviewer Fix Cycle Round 3 preserves only key-specific numeric sequence and canonical stage
+  correlation values; records Controller dispatch denials; and requires an authorized canonical
+  Agent role with `read_control` before service or CLI repository access.
+- Round 3 regression validation passed 197 tests and 7 subtests; Task Schema, Python compile and
+  Control Plane checks passed with no new blocker. The prior shared validation environment lost its
+  Python executable, so Ruff and strict mypy revalidation must be confirmed by GitHub CI.
 
 ## Task Change Rules
 

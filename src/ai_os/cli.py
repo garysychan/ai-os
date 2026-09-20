@@ -56,11 +56,13 @@ from ai_os.governance import (
     run_consistency_checks,
 )
 from ai_os.observability import (
+    AuditQueryContext,
     ObservabilityError,
     RuntimeEvent,
     RuntimeEventFilter,
     RuntimeEventSource,
     RuntimeEventType,
+    authorize_query,
 )
 from ai_os.persistence import (
     PersistenceError,
@@ -322,10 +324,16 @@ def _build_parser() -> argparse.ArgumentParser:
     audit_list.add_argument("--source", choices=[item.value for item in RuntimeEventSource])
     audit_list.add_argument("--limit", type=int, default=100)
     audit_list.add_argument("--json", action="store_true")
+    audit_list.add_argument(
+        "--actor-role", required=True, choices=[role.value for role in AgentRole]
+    )
     audit_show = audit_commands.add_parser("show")
     audit_show.add_argument("event_id")
     audit_show.add_argument("--database", type=Path, required=True)
     audit_show.add_argument("--json", action="store_true")
+    audit_show.add_argument(
+        "--actor-role", required=True, choices=[role.value for role in AgentRole]
+    )
 
     trace = commands.add_parser("trace", help="Reconstruct a canonical runtime trace.")
     trace_commands = trace.add_subparsers(dest="trace_command", required=True)
@@ -334,6 +342,9 @@ def _build_parser() -> argparse.ArgumentParser:
     trace_show.add_argument("--database", type=Path, required=True)
     trace_show.add_argument("--limit", type=int, default=100)
     trace_show.add_argument("--json", action="store_true")
+    trace_show.add_argument(
+        "--actor-role", required=True, choices=[role.value for role in AgentRole]
+    )
 
     return parser
 
@@ -1507,6 +1518,9 @@ def _runtime_event_payload(event: Any) -> dict[str, Any]:
 
 def _run_observability(args: argparse.Namespace) -> int:
     try:
+        authorize_query(
+            AuditQueryContext(AgentRole(args.actor_role), Permission.READ_CONTROL)
+        )
         store = SQLiteRuntimeStore(StoreConfig(database=args.database))
         events: tuple[RuntimeEvent, ...]
         if args.command == "audit" and args.audit_command == "show":

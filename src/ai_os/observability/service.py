@@ -19,8 +19,14 @@ from ai_os.tools import ToolInvocation, ToolResult
 from ai_os.workflows import WorkflowEvent, WorkflowStatus
 
 from .integrations import from_adapter, from_controller, from_execution, from_tool, from_workflow
-from .models import RuntimeEvent, RuntimeEventFilter, RuntimeEventSource, RuntimeEventType
-from .validation import sanitize_event
+from .models import (
+    AuditQueryContext,
+    RuntimeEvent,
+    RuntimeEventFilter,
+    RuntimeEventSource,
+    RuntimeEventType,
+)
+from .validation import authorize_query, sanitize_event
 
 
 class RuntimeEventRepository(Protocol):
@@ -43,16 +49,26 @@ class ObservabilityService:
         sanitized = sanitize_event(event, allow_unsequenced=True)
         return self.repository.append_runtime_event(sanitized)
 
-    def get(self, event_id: str) -> RuntimeEvent:
+    def get(self, event_id: str, *, context: AuditQueryContext) -> RuntimeEvent:
+        authorize_query(context)
         return self.repository.get_runtime_event(event_id)
 
     def list(
-        self, *, filters: RuntimeEventFilter | None = None, limit: int = 100
+        self,
+        *,
+        context: AuditQueryContext,
+        filters: RuntimeEventFilter | None = None,
+        limit: int = 100,
     ) -> tuple[RuntimeEvent, ...]:
+        authorize_query(context)
         return self.repository.list_runtime_events(filters=filters, limit=limit)
 
-    def trace(self, trace_id: str, *, limit: int = 100) -> tuple[RuntimeEvent, ...]:
-        return self.list(filters=RuntimeEventFilter(trace_id=trace_id), limit=limit)
+    def trace(
+        self, trace_id: str, *, context: AuditQueryContext, limit: int = 100
+    ) -> tuple[RuntimeEvent, ...]:
+        return self.list(
+            context=context, filters=RuntimeEventFilter(trace_id=trace_id), limit=limit
+        )
 
     def adapter_sink(self, trace_id: str) -> Callable[[AdapterAuditEvent], None]:
         """Return a dependency-injected Adapter evidence sink."""
