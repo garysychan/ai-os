@@ -882,6 +882,88 @@ Notes:
   `REVIEW` to `DONE` and CR-2026-013 is closed as completed.
 - CR Final Status: CLOSED / COMPLETED.
 
+## TASK-0017 — Install Runtime Observability and Audit Trail
+
+Priority: P1
+Agent: Controller / Planner / Developer / Tester / Reviewer / Fixer
+Status: TODO
+Dependencies: TASK-0005, TASK-0006, TASK-0010, TASK-0011, TASK-0012, TASK-0013, TASK-0014, TASK-0015, TASK-0016
+
+Description:
+Install a unified, governed Runtime Observability and Audit Trail over the existing Controller,
+Execution, Adapter, Tool, persistence and Workflow evidence without creating a second execution
+authority or exposing secrets.
+
+Acceptance Criteria:
+- [ ] A canonical immutable runtime event envelope identifies event, timestamp, task, session,
+  workflow, execution, Agent and correlation context where applicable.
+- [ ] Existing Controller, Execution, Adapter, Tool and Workflow evidence is normalized through
+  explicit integration boundaries without duplicating their decision authority.
+- [ ] Lifecycle events cover accepted, started, completed, failed, cancelled, denied and timed-out
+  outcomes where applicable.
+- [ ] Permission and approval decisions are traceable without recording credentials or sensitive
+  payloads.
+- [ ] Redaction is fail-closed, deterministic and applied before persistence or presentation.
+- [ ] Audit records are append-only and reject invalid ordering, malformed identifiers and
+  integrity violations.
+- [ ] SQLite persistence supports atomic event append, bounded queries, retention and reopen
+  recovery through the existing Persistent Runtime Store boundary.
+- [ ] Correlation preserves `task_id`, `session_id`, `workflow_session_id`, `execution_id`,
+  `invocation_id` and `trace_id` relationships when those identifiers exist.
+- [ ] CLI supports bounded audit listing, filtered event inspection and trace reconstruction in
+  human-readable and JSON formats.
+- [ ] Unknown event types, unsupported schema versions and unauthorized queries fail closed.
+- [ ] Observability failure cannot silently authorize, replay or alter an execution outcome.
+- [ ] Existing public APIs remain backward compatible unless a separately approved change states
+  otherwise.
+- [ ] Positive, negative, redaction, permission, ordering, corruption, persistence and
+  cross-process tests exist.
+- [ ] Tests pass on Python 3.11 and Python 3.12.
+- [ ] Coverage remains at or above the configured 80% threshold.
+- [ ] Control Plane Consistency Check has no new blocking finding.
+- [ ] Whole-branch Reviewer result is APPROVE.
+- [ ] Protected Pull Request governance passes before merge.
+
+Proposed Artifacts:
+- CR-2026-014
+- `feature/runtime-observability-audit`
+- `src/ai_os/observability/`
+- `tests/observability/`
+- CLI integration and Persistent Runtime Store migrations required by the approved design
+
+Risks:
+- A parallel audit model could diverge from existing Controller, Execution and Adapter evidence.
+- Sensitive prompts, credentials, filesystem paths or provider payloads could leak through events.
+- Incomplete correlation could produce misleading or unverifiable execution histories.
+- Audit writes could change execution outcomes or leave partial evidence after a transaction fails.
+- Unbounded event retention or queries could create storage and performance exhaustion.
+- Mutable or reorderable records could invalidate governance evidence.
+
+Notes:
+- Change ID: CR-2026-014.
+- Requester: Repository Owner.
+- Date: 2026-09-20.
+- Target Document: `ARCHITECTURE.md`, `WORKFLOW.md`, `TASKS.md` and executable runtime modules.
+- Change Type: ARCHITECTURE / WORKFLOW / SECURITY.
+- Classification: MINOR compatible capability extension with security-sensitive audit impact.
+- Reason: Provide one inspectable and durable execution history across the installed AI OS V2
+  runtime layers.
+- Current State: Controller and Execution traces, Adapter audit events, Workflow events and SQLite
+  persistence exist, but no canonical cross-runtime event envelope, correlation model or unified
+  inspection surface exists.
+- Proposed Change: Add a governed observability boundary that normalizes existing evidence,
+  persists redacted append-only events and reconstructs bounded traces without owning execution
+  decisions.
+- Affected Documents: `ARCHITECTURE.md`, `WORKFLOW.md`, `TASKS.md`.
+- Affected Agents: Controller, Planner, Developer, Tester, Reviewer and Fixer.
+- Impact: Adds runtime traceability and audit inspection while preserving existing authority,
+  permission and execution boundaries.
+- Dependencies: TASK-0005, TASK-0006 and TASK-0010 through TASK-0016 as listed above.
+- Approval Required: Explicit A2 Human Approval before implementation.
+- CR Status: PROPOSED / AWAITING APPROVAL.
+- No implementation, architecture update or feature branch is authorized until the Repository
+  Owner issues `APPROVE CR-2026-014`.
+
 ## Task Change Rules
 
 1. Do not silently delete completed tasks.
