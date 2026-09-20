@@ -13,6 +13,7 @@ from .ports import (
     AdapterAuditRepository,
     ControllerSessionRepository,
     ExecutionRepository,
+    RuntimeEventRepository,
     RuntimeStore,
 )
 from .sqlite_store import SQLiteRuntimeStore
@@ -29,6 +30,7 @@ __all__ = [
     "PersistenceNotFoundError",
     "PruneResult",
     "RuntimeStore",
+    "RuntimeEventRepository",
     "SQLiteRuntimeStore",
     "StoreConfig",
     "StoreStatus",

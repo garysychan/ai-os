@@ -3,6 +3,7 @@
 import json
 
 from ai_os.cli import main
+from ai_os.persistence import CURRENT_SCHEMA_VERSION
 
 
 def test_store_init_status_and_migrate(tmp_path, capsys) -> None:  # type: ignore[no-untyped-def]
@@ -12,7 +13,7 @@ def test_store_init_status_and_migrate(tmp_path, capsys) -> None:  # type: ignor
         payload = json.loads(capsys.readouterr().out)
         assert payload["status"] == "PASS"
         assert payload["initialized"] is True
-        assert payload["schema_version"] == 1
+        assert payload["schema_version"] == CURRENT_SCHEMA_VERSION
 
 
 def test_store_status_does_not_create_database(tmp_path, capsys) -> None:  # type: ignore[no-untyped-def]

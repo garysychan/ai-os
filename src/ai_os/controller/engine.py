@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from contextlib import suppress
 from dataclasses import replace
 from datetime import UTC, datetime
 
 from ai_os.agents import (
     AgentRole,
     AgentRuntime,
+    AgentRuntimeError,
     Capability,
     ExecutionRequest,
     ExecutionResult,
@@ -17,12 +19,13 @@ from ai_os.agents import (
 from ai_os.tasks import ReviewResult, Task, TaskStatus
 from ai_os.workflow import StateMachine, TransitionContext
 
-from .errors import ControllerPolicyError
+from .errors import ControllerError, ControllerPolicyError
 from .models import (
     ControllerEventType,
     ControllerOutcome,
     ControllerSession,
     ControllerStage,
+    TraceEvent,
 )
 from .policy import ControllerPolicy
 from .session import (
@@ -42,10 +45,14 @@ class ControllerEngine:
         runtime: AgentRuntime,
         state_machine: StateMachine | None = None,
         policy: ControllerPolicy | None = None,
+        event_sink: Callable[[TraceEvent, ControllerOutcome | None], None] | None = None,
+        denial_sink: Callable[[str, datetime, str], None] | None = None,
     ) -> None:
         self.runtime = runtime
         self.state_machine = state_machine or StateMachine()
         self.policy = policy or ControllerPolicy()
+        self.event_sink = event_sink
+        self.denial_sink = denial_sink
 
     def start(
         self,
@@ -57,19 +64,25 @@ class ControllerEngine:
         max_fix_attempts: int = 2,
         approval_evidence: tuple[str, ...] = (),
     ) -> ControllerSession:
-        self.policy.validate_start(
-            task,
-            objective,
-            dependency_states,
-            max_fix_attempts=max_fix_attempts,
-        )
-        return create_session(
+        try:
+            self.policy.validate_start(
+                task,
+                objective,
+                dependency_states,
+                max_fix_attempts=max_fix_attempts,
+            )
+        except ControllerError as error:
+            self._deny(task.task_id, started_at, type(error).__name__)
+            raise
+        session = create_session(
             task,
             objective,
             started_at=started_at,
             max_fix_attempts=max_fix_attempts,
             approval_evidence=approval_evidence,
         )
+        self._emit(session.events[-1], None)
+        return session
 
     def dispatch(
         self,
@@ -85,10 +98,14 @@ class ControllerEngine:
         review_result: ReviewResult | None = None,
         evidence: tuple[str, ...] = (),
     ) -> tuple[ControllerSession, ExecutionResult]:
-        self.policy.require_dispatchable(session)
-        stage = self.policy.stage_for(capability)
-        if stage is ControllerStage.FIXING:
-            self.policy.require_fix_available(session)
+        try:
+            self.policy.require_dispatchable(session)
+            stage = self.policy.stage_for(capability)
+            if stage is ControllerStage.FIXING:
+                self.policy.require_fix_available(session)
+        except ControllerError as error:
+            self._deny(task.task_id, timestamp, type(error).__name__)
+            raise
         dispatched = append_event(
             session,
             event_type=ControllerEventType.AGENT_DISPATCHED,
@@ -98,6 +115,7 @@ class ControllerEngine:
             reason=f"Dispatch {capability.value}",
             evidence=evidence,
         )
+        self._emit(dispatched.events[-1], None)
         request = ExecutionRequest(
             task=task,
             capability=capability,
@@ -108,8 +126,14 @@ class ControllerEngine:
             review_result=review_result,
             evidence=evidence,
         )
-        result = self.runtime.execute(request, dependency_states=dependency_states)
-        return record_result(dispatched, result, stage=stage, timestamp=timestamp), result
+        try:
+            result = self.runtime.execute(request, dependency_states=dependency_states)
+        except AgentRuntimeError as error:
+            self._deny(task.task_id, timestamp, type(error).__name__)
+            raise
+        recorded = record_result(dispatched, result, stage=stage, timestamp=timestamp)
+        self._emit(recorded.events[-1], None)
+        return recorded, result
 
     def transition(
         self,
@@ -127,7 +151,9 @@ class ControllerEngine:
             context,
             occurred_at=occurred_at,
         )
-        return record_transition(session, event), updated_task
+        recorded = record_transition(session, event)
+        self._emit(recorded.events[-1], None)
+        return recorded, updated_task
 
     def terminate(
         self,
@@ -138,13 +164,25 @@ class ControllerEngine:
         reason: str,
         findings: tuple[str, ...] = (),
     ) -> ControllerSession:
-        return terminate_session(
+        terminal = terminate_session(
             session,
             outcome,
             timestamp=timestamp,
             reason=reason,
             findings=findings,
         )
+        self._emit(terminal.events[-1], outcome)
+        return terminal
+
+    def _emit(self, event: TraceEvent, outcome: ControllerOutcome | None) -> None:
+        if self.event_sink is not None:
+            with suppress(Exception):
+                self.event_sink(event, outcome)
+
+    def _deny(self, task_id: str, timestamp: datetime, reason: str) -> None:
+        if self.denial_sink is not None:
+            with suppress(Exception):
+                self.denial_sink(task_id, timestamp, reason)
 
     def run_lifecycle(
         self,

@@ -55,7 +55,21 @@ from ai_os.governance import (
     parse_tasks,
     run_consistency_checks,
 )
-from ai_os.persistence import PersistenceError, SQLiteRuntimeStore, StoreConfig
+from ai_os.observability import (
+    AuditQueryContext,
+    ObservabilityError,
+    RuntimeEvent,
+    RuntimeEventFilter,
+    RuntimeEventSource,
+    RuntimeEventType,
+    authorize_query,
+)
+from ai_os.persistence import (
+    PersistenceError,
+    PersistenceNotFoundError,
+    SQLiteRuntimeStore,
+    StoreConfig,
+)
 from ai_os.tasks import (
     AcceptanceCriterion,
     Priority,
@@ -297,6 +311,40 @@ def _build_parser() -> argparse.ArgumentParser:
     store_audit.add_argument("--limit", type=int, default=100)
     store_audit.add_argument("--database", type=Path, required=True)
     store_audit.add_argument("--json", action="store_true")
+
+    audit = commands.add_parser("audit", help="Inspect canonical runtime audit evidence.")
+    audit_commands = audit.add_subparsers(dest="audit_command", required=True)
+    audit_list = audit_commands.add_parser("list")
+    audit_list.add_argument("--database", type=Path, required=True)
+    audit_list.add_argument("--task-id")
+    audit_list.add_argument("--trace-id")
+    audit_list.add_argument("--execution-id")
+    audit_list.add_argument("--invocation-id")
+    audit_list.add_argument("--event-type", choices=[item.value for item in RuntimeEventType])
+    audit_list.add_argument("--source", choices=[item.value for item in RuntimeEventSource])
+    audit_list.add_argument("--limit", type=int, default=100)
+    audit_list.add_argument("--json", action="store_true")
+    audit_list.add_argument(
+        "--actor-role", required=True, choices=[role.value for role in AgentRole]
+    )
+    audit_show = audit_commands.add_parser("show")
+    audit_show.add_argument("event_id")
+    audit_show.add_argument("--database", type=Path, required=True)
+    audit_show.add_argument("--json", action="store_true")
+    audit_show.add_argument(
+        "--actor-role", required=True, choices=[role.value for role in AgentRole]
+    )
+
+    trace = commands.add_parser("trace", help="Reconstruct a canonical runtime trace.")
+    trace_commands = trace.add_subparsers(dest="trace_command", required=True)
+    trace_show = trace_commands.add_parser("show")
+    trace_show.add_argument("trace_id")
+    trace_show.add_argument("--database", type=Path, required=True)
+    trace_show.add_argument("--limit", type=int, default=100)
+    trace_show.add_argument("--json", action="store_true")
+    trace_show.add_argument(
+        "--actor-role", required=True, choices=[role.value for role in AgentRole]
+    )
 
     return parser
 
@@ -1360,6 +1408,7 @@ def _store_status_payload(status: Any) -> dict[str, Any]:
             "execution_plans": status.execution_plans,
             "execution_sessions": status.execution_sessions,
             "adapter_audit_events": status.adapter_audit_events,
+            "runtime_events": status.runtime_events,
         },
     }
 
@@ -1444,6 +1493,93 @@ def _run_store(args: argparse.Namespace) -> int:
         )
     )
     return 0
+
+
+def _runtime_event_payload(event: Any) -> dict[str, Any]:
+    return {
+        "schema_version": event.schema_version,
+        "event_id": event.event_id,
+        "sequence": event.sequence,
+        "timestamp": event.timestamp.isoformat(),
+        "event_type": event.event_type.value,
+        "source": event.source.value,
+        "task_id": event.task_id,
+        "trace_id": event.trace_id,
+        "session_id": event.session_id,
+        "workflow_session_id": event.workflow_session_id,
+        "execution_id": event.execution_id,
+        "invocation_id": event.invocation_id,
+        "agent_role": event.agent_role,
+        "summary": event.summary,
+        "correlation": dict(event.correlation),
+        "evidence": list(event.evidence),
+    }
+
+
+def _run_observability(args: argparse.Namespace) -> int:
+    try:
+        authorize_query(AuditQueryContext(AgentRole(args.actor_role), Permission.READ_CONTROL))
+        store = SQLiteRuntimeStore(StoreConfig(database=args.database))
+        events: tuple[RuntimeEvent, ...]
+        if args.command == "audit" and args.audit_command == "show":
+            events = (store.get_runtime_event(args.event_id),)
+            operation = "RUNTIME AUDIT SHOW"
+        else:
+            filters = RuntimeEventFilter(
+                task_id=getattr(args, "task_id", None),
+                trace_id=(
+                    args.trace_id if args.command == "trace" else getattr(args, "trace_id", None)
+                ),
+                execution_id=getattr(args, "execution_id", None),
+                invocation_id=getattr(args, "invocation_id", None),
+                event_type=(
+                    RuntimeEventType(args.event_type) if getattr(args, "event_type", None) else None
+                ),
+                source=(RuntimeEventSource(args.source) if getattr(args, "source", None) else None),
+            )
+            events = store.list_runtime_events(filters=filters, limit=args.limit)
+            operation = "RUNTIME TRACE SHOW" if args.command == "trace" else "RUNTIME AUDIT LIST"
+            if args.command == "trace" and not events:
+                raise PersistenceNotFoundError(f"unknown runtime trace: {args.trace_id}")
+        payload = {
+            "operation": operation,
+            "status": "PASS",
+            "database": str(store.database),
+            "events": [_runtime_event_payload(event) for event in events],
+        }
+    except (OSError, PersistenceError, ObservabilityError) as error:
+        payload = {
+            "operation": "RUNTIME OBSERVABILITY",
+            "status": "FAIL",
+            "error_type": type(error).__name__,
+            "error": str(error),
+        }
+        print(
+            json.dumps(payload, indent=2)
+            if args.json
+            else f"RUNTIME OBSERVABILITY\nStatus: FAIL\nError: {error}"
+        )
+        return 2
+    print(json.dumps(payload, indent=2) if args.json else _human_runtime_events(operation, events))
+    return 0
+
+
+def _human_runtime_events(operation: str, events: tuple[RuntimeEvent, ...]) -> str:
+    lines = [operation, f"Events: {len(events)}"]
+    for event in events:
+        lines.extend(
+            (
+                f"[{event.sequence}] {event.timestamp.isoformat()} "
+                f"{event.source.value}/{event.event_type.value}",
+                f"  Event: {event.event_id}",
+                f"  Task: {event.task_id}  Trace: {event.trace_id}",
+                f"  Summary: {event.summary}",
+                f"  Correlation: {dict(event.correlation)}",
+                f"  Evidence: {list(event.evidence)}",
+            )
+        )
+    lines.append("Status: PASS")
+    return "\n".join(lines)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -1579,6 +1715,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "store":
         return _run_store(args)
+
+    if args.command in {"audit", "trace"}:
+        return _run_observability(args)
 
     parser.error("Unsupported command")
     return 2

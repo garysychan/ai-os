@@ -127,6 +127,24 @@ def engine(
     return WorkflowEngine(WorkflowRegistry(definitions), controller, store=store), store
 
 
+def test_pre_execution_workflow_denial_is_emitted() -> None:
+    workflow, _ = engine()
+    denied: list[tuple[str, str]] = []
+    workflow.denial_sink = lambda task_id, _workflow, _timestamp, reason: denied.append(
+        (task_id, reason)
+    )
+    with pytest.raises(WorkflowPolicyError):
+        workflow.start(
+            replace(task(), status=TaskStatus.TODO),
+            "coding",
+            "1",
+            "not authorized",
+            dependency_states=DEPENDENCIES,
+            started_at=NOW,
+        )
+    assert denied == [("TASK-0015", "WorkflowPolicyError")]
+
+
 def test_coding_workflow_completes_through_controller_and_state_machine() -> None:
     runtime, store = engine()
     result = runtime.run(

@@ -24,6 +24,7 @@ class StoreStatus:
     execution_plans: int
     execution_sessions: int
     adapter_audit_events: int
+    runtime_events: int = 0
 
 
 @dataclass(frozen=True)
@@ -32,3 +33,4 @@ class PruneResult:
     execution_plans: int = 0
     execution_sessions: int = 0
     adapter_audit_events: int = 0
+    runtime_events: int = 0

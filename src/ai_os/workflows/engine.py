@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from contextlib import suppress
 from dataclasses import replace
 from datetime import UTC, datetime
 
@@ -16,7 +17,7 @@ from ai_os.controller import (
 from ai_os.tasks import ReviewResult, Task, TaskStatus
 from ai_os.workflow import TransitionContext
 
-from .errors import WorkflowPolicyError
+from .errors import WorkflowError, WorkflowPolicyError
 from .fingerprint import definition_fingerprint
 from .models import (
     WorkflowDefinition,
@@ -46,11 +47,15 @@ class WorkflowEngine:
         controller: ControllerEngine,
         policy: WorkflowPolicy | None = None,
         store: WorkflowSessionStore | None = None,
+        event_sink: Callable[[WorkflowEvent, WorkflowStatus | None, bool], None] | None = None,
+        denial_sink: Callable[[str, str, datetime, str], None] | None = None,
     ) -> None:
         self.registry = registry
         self.controller = controller
         self.policy = policy or WorkflowPolicy()
         self.store = store or InMemoryWorkflowStore()
+        self.event_sink = event_sink
+        self.denial_sink = denial_sink
 
     def start(
         self,
@@ -65,19 +70,27 @@ class WorkflowEngine:
         approval_evidence: tuple[str, ...] = (),
         max_fix_attempts: int | None = None,
     ) -> WorkflowSession:
-        definition = self.registry.resolve(workflow, version)
-        fix_budget = definition.max_fix_attempts if max_fix_attempts is None else max_fix_attempts
-        self.policy.authorize(
-            task,
-            definition,
-            dependency_states,
-            now=started_at,
-            deadline=deadline,
-            approval_evidence=approval_evidence,
-            max_fix_attempts=fix_budget,
-        )
-        if not objective.strip():
-            raise WorkflowPolicyError("Workflow objective must not be empty")
+        try:
+            definition = self.registry.resolve(workflow, version)
+            fix_budget = (
+                definition.max_fix_attempts if max_fix_attempts is None else max_fix_attempts
+            )
+            self.policy.authorize(
+                task,
+                definition,
+                dependency_states,
+                now=started_at,
+                deadline=deadline,
+                approval_evidence=approval_evidence,
+                max_fix_attempts=fix_budget,
+            )
+            if not objective.strip():
+                raise WorkflowPolicyError("Workflow objective must not be empty")
+        except WorkflowError as error:
+            if self.denial_sink is not None:
+                with suppress(Exception):
+                    self.denial_sink(task.task_id, workflow, started_at, type(error).__name__)
+            raise
         session_id = (
             f"workflow:{task.task_id}:{definition.name}:{definition.version}:"
             f"{int(started_at.timestamp() * 1_000_000)}"
@@ -110,6 +123,7 @@ class WorkflowEngine:
             definition_fingerprint(definition),
         )
         self.store.save(session)
+        self._emit(event, None)
         return session
 
     def run(
@@ -222,6 +236,9 @@ class WorkflowEngine:
             controller_session_id=controller_session.session_id,
         )
         self.store.save(terminal)
+        for event in terminal.events[len(session.events) :]:
+            emitted_status = terminal.status if event.event_type == "SESSION_TERMINATED" else None
+            self._emit(event, emitted_status)
         return WorkflowResult(
             terminal,
             updated_task,
@@ -379,14 +396,21 @@ class WorkflowEngine:
             timestamp,
             reason,
         )
-        self.store.save(
-            replace(
-                session,
-                status=status,
-                updated_at=timestamp,
-                events=(*session.events, event),
-            )
+        updated = replace(
+            session,
+            status=status,
+            updated_at=timestamp,
+            events=(*session.events, event),
         )
+        self.store.save(updated)
+        self._emit(event, status, timed_out="deadline" in reason.casefold())
+
+    def _emit(
+        self, event: WorkflowEvent, status: WorkflowStatus | None, timed_out: bool = False
+    ) -> None:
+        if self.event_sink is not None:
+            with suppress(Exception):
+                self.event_sink(event, status, timed_out)
 
     def validate_resume(self, session_id: str) -> WorkflowSession:
         session = self.store.get(session_id)

@@ -882,6 +882,147 @@ Notes:
   `REVIEW` to `DONE` and CR-2026-013 is closed as completed.
 - CR Final Status: CLOSED / COMPLETED.
 
+## TASK-0017 — Install Runtime Observability and Audit Trail
+
+Priority: P1
+Agent: Controller / Planner / Developer / Tester / Reviewer / Fixer
+Status: REVIEW
+Dependencies: TASK-0005, TASK-0006, TASK-0010, TASK-0011, TASK-0012, TASK-0013, TASK-0014, TASK-0015, TASK-0016
+
+Description:
+Install a unified, governed Runtime Observability and Audit Trail over the existing Controller,
+Execution, Adapter, Tool, persistence and Workflow evidence without creating a second execution
+authority or exposing secrets.
+
+Acceptance Criteria:
+- [x] A canonical immutable runtime event envelope identifies event, timestamp, task, session,
+  workflow, execution, Agent and correlation context where applicable.
+- [x] Existing Controller, Execution, Adapter, Tool and Workflow evidence is normalized through
+  explicit integration boundaries without duplicating their decision authority.
+- [x] Lifecycle events cover accepted, started, completed, failed, cancelled, denied and timed-out
+  outcomes where applicable.
+- [x] Permission and approval decisions are traceable without recording credentials or sensitive
+  payloads.
+- [x] Redaction is fail-closed, deterministic and applied before persistence or presentation.
+- [x] Audit records are append-only and reject invalid ordering, malformed identifiers and
+  integrity violations.
+- [x] SQLite persistence supports atomic event append, bounded queries, retention and reopen
+  recovery through the existing Persistent Runtime Store boundary.
+- [x] Correlation preserves `task_id`, `session_id`, `workflow_session_id`, `execution_id`,
+  `invocation_id` and `trace_id` relationships when those identifiers exist.
+- [x] CLI supports bounded audit listing, filtered event inspection and trace reconstruction in
+  human-readable and JSON formats.
+- [x] Unknown event types, unsupported schema versions and unauthorized queries fail closed.
+- [x] Observability failure cannot silently authorize, replay or alter an execution outcome.
+- [x] Existing public APIs remain backward compatible unless a separately approved change states
+  otherwise.
+- [x] Positive, negative, redaction, permission, ordering, corruption, persistence and
+  cross-process tests exist.
+- [x] Tests pass on Python 3.11 and Python 3.12.
+- [x] Coverage remains at or above the configured 80% threshold.
+- [x] Control Plane Consistency Check has no new blocking finding.
+- [x] Whole-branch Reviewer result is APPROVE.
+- [ ] Protected Pull Request governance passes before merge.
+
+Proposed Artifacts:
+- CR-2026-014
+- `feature/runtime-observability-audit`
+- `src/ai_os/observability/`
+- `tests/observability/`
+- CLI integration and Persistent Runtime Store migrations required by the approved design
+
+Risks:
+- A parallel audit model could diverge from existing Controller, Execution and Adapter evidence.
+- Sensitive prompts, credentials, filesystem paths or provider payloads could leak through events.
+- Incomplete correlation could produce misleading or unverifiable execution histories.
+- Audit writes could change execution outcomes or leave partial evidence after a transaction fails.
+- Unbounded event retention or queries could create storage and performance exhaustion.
+- Mutable or reorderable records could invalidate governance evidence.
+
+Notes:
+- Change ID: CR-2026-014.
+- Requester: Repository Owner.
+- Date: 2026-09-20.
+- Target Document: `ARCHITECTURE.md`, `WORKFLOW.md`, `TASKS.md` and executable runtime modules.
+- Change Type: ARCHITECTURE / WORKFLOW / SECURITY.
+- Classification: MINOR compatible capability extension with security-sensitive audit impact.
+- Reason: Provide one inspectable and durable execution history across the installed AI OS V2
+  runtime layers.
+- Current State: Controller and Execution traces, Adapter audit events, Workflow events and SQLite
+  persistence exist, but no canonical cross-runtime event envelope, correlation model or unified
+  inspection surface exists.
+- Proposed Change: Add a governed observability boundary that normalizes existing evidence,
+  persists redacted append-only events and reconstructs bounded traces without owning execution
+  decisions.
+- Affected Documents: `ARCHITECTURE.md`, `WORKFLOW.md`, `TASKS.md`.
+- Affected Agents: Controller, Planner, Developer, Tester, Reviewer and Fixer.
+- Impact: Adds runtime traceability and audit inspection while preserving existing authority,
+  permission and execution boundaries.
+- Dependencies: TASK-0005, TASK-0006 and TASK-0010 through TASK-0016 as listed above.
+- Approval Required: Explicit A2 Human Approval before implementation.
+- Approval Evidence: Repository Owner issued `APPROVE CR-2026-014` on 2026-09-20.
+- CR Status: APPROVED / IMPLEMENTATION AUTHORIZED.
+- Implementation was authorized to begin on the approved feature branch.
+- Implementation started from authoritative `main` commit `570b20b` on
+  `feature/runtime-observability-audit`; TASK-0017 transitioned to `IN_PROGRESS`.
+- Runtime Observability Core, explicit evidence normalizers, SQLite schema v2 persistence and
+  `audit`/`trace` CLI inspection are installed without adding execution authority.
+- Local Python 3.12 validation passed 189 tests and 7 subtests with 85.12% branch coverage; Ruff,
+  strict mypy and package build passed.
+- Control Plane Consistency Check completed with `WARNING` and no new blocking finding; all
+  reported warnings pre-date TASK-0017 and remain governed separately.
+- Python 3.11 CI, independent Whole-branch Reviewer validation and protected Pull Request
+  governance remain pending.
+- Initial Whole-branch Reviewer validation returned `REQUEST_CHANGES`: opaque credential and
+  provider payloads could leak, runtime sinks and Tool evidence were incomplete, terminal outcomes
+  could be misclassified, cross-source sequences collided, trace ordering used timestamps,
+  identifiers were under-validated and human CLI output lacked inspectable evidence.
+- Reviewer Fix Cycle changed sensitive opaque text to fail-closed whole-field redaction; added
+  dependency-injected Controller, Execution, Adapter, Tool and Workflow evidence sinks; mapped
+  denied, failed, cancelled and timed-out outcomes explicitly; added atomic global trace sequence
+  allocation and sequence-ordered reconstruction; enforced bounded identifier grammars; and
+  rendered sanitized human-readable event details.
+- Post-fix local validation passed 189 tests and 7 subtests with 85.12% branch coverage; Ruff,
+  strict mypy, package build, Task Schema and Control Plane checks passed with no new blocker.
+- Whole-branch Reviewer revalidation remained `REQUEST_CHANGES`: arbitrary opaque evidence is not
+  default-redacted, same-trace concurrent sequence allocation is not serialized, and
+  pre-execution denial evidence is incomplete outside the Adapter boundary. The affected
+  acceptance criteria were reopened and TASK-0017 remains `IN_PROGRESS`.
+- Reviewer Fix Cycle Round 2 default-redacts all opaque summary/evidence and preserves only
+  allowlisted identifier-like correlation values; serializes sequence allocation with
+  `BEGIN IMMEDIATE` and validates 32 concurrent same-trace writers; and records pre-execution
+  Controller, Execution, Tool and Workflow authorization denials through failure-isolated sinks.
+- Round 2 local validation passed 195 tests and 7 subtests with 84.98% branch coverage; Ruff,
+  strict mypy, package build, Task Schema and Control Plane checks passed with no new blocker.
+- Final Reviewer revalidation after Round 2 remained `REQUEST_CHANGES`: correlation values used a
+  generic permissive grammar, Controller dispatch policy denials bypassed the denial sink, and
+  service/CLI audit reads lacked an explicit query authorization context.
+- Reviewer Fix Cycle Round 3 preserves only key-specific numeric sequence and canonical stage
+  correlation values; records Controller dispatch denials; and requires an authorized canonical
+  Agent role with `read_control` before service or CLI repository access.
+- Round 3 regression validation passed 197 tests and 7 subtests; Task Schema, Python compile and
+  Control Plane checks passed with no new blocker. The prior shared validation environment lost its
+  Python executable, so Ruff and strict mypy revalidation must be confirmed by GitHub CI.
+- Final Reviewer Round 3 kept one blocker open: uppercase private data could pass the stage format
+  check and `agent_role` accepted arbitrary strings.
+- Reviewer Fix Cycle Round 4 replaced the stage format check with canonical Controller/Workflow
+  stage allowlists and rejects non-canonical Agent roles before persistence or presentation.
+- Round 4 regression validation passed 199 tests and 7 subtests; Python compile and diff checks
+  passed. Ruff and strict mypy remain delegated to the required GitHub Python 3.11/3.12 checks.
+- Whole-branch Final Reviewer Revalidation Round 4 returned `APPROVE` for implementation commit
+  `4032e815c924d18ff4794c79af2f09b4efc7b326`; no unresolved security or consistency blocker
+  remains. Required GitHub Python 3.11/3.12 and protected Pull Request gates remain pending.
+- The first post-review Python 3.11/3.12 run failed only Ruff E501 because one validation line was
+  101 characters against the 100-character limit. The CI Fix Cycle split that statement without
+  changing runtime behavior; fresh Python 3.11/3.12 checks remain required.
+- The next Python 3.11/3.12 run passed Ruff lint but failed `ruff format --check` on one CLI call.
+  CI Fix Cycle Round 2 applied the formatter's exact one-line output without changing behavior;
+  fresh Python 3.11/3.12 checks remain required.
+- The post-fix GitHub matrix completed successfully on Python 3.11 and Python 3.12 for commit
+  `b2c47641ba994f63e7297ad38b490109b39eb8f6`. With Final Reviewer `APPROVE` and no open
+  implementation blocker, TASK-0017 transitioned from `IN_PROGRESS` to `REVIEW` and is Ready for
+  Review. Protected Pull Request governance remains required before merge.
+
 ## Task Change Rules
 
 1. Do not silently delete completed tasks.

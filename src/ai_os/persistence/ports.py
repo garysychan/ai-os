@@ -8,6 +8,7 @@ from typing import Protocol
 from ai_os.adapters import AdapterAuditEvent
 from ai_os.controller import ControllerSession
 from ai_os.execution import ExecutionPlan, ExecutionSession
+from ai_os.observability import RuntimeEvent, RuntimeEventFilter
 
 from .models import PruneResult, StoreStatus
 
@@ -36,10 +37,21 @@ class AdapterAuditRepository(Protocol):
     ) -> tuple[AdapterAuditEvent, ...]: ...
 
 
+class RuntimeEventRepository(Protocol):
+    def append_runtime_event(self, event: RuntimeEvent) -> RuntimeEvent: ...
+
+    def get_runtime_event(self, event_id: str) -> RuntimeEvent: ...
+
+    def list_runtime_events(
+        self, *, filters: RuntimeEventFilter | None = None, limit: int = 100
+    ) -> tuple[RuntimeEvent, ...]: ...
+
+
 class RuntimeStore(
     ControllerSessionRepository,
     ExecutionRepository,
     AdapterAuditRepository,
+    RuntimeEventRepository,
     Protocol,
 ):
     def initialize(self) -> StoreStatus: ...

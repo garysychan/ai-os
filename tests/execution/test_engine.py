@@ -113,6 +113,22 @@ class ScriptedAdapter:
 
 
 class ExecutionEngineTests(unittest.TestCase):
+    def test_start_policy_denial_is_emitted(self) -> None:
+        denied: list[tuple[str, str]] = []
+        engine = ExecutionEngine(
+            AdapterRegistry((NoOpAdapter("memory", frozenset({"record"})),)),
+            denial_sink=lambda task_id, _timestamp, reason: denied.append((task_id, reason)),
+        )
+        with self.assertRaises(ExecutionPolicyError):
+            engine.run(
+                replace(task(), status=TaskStatus.TODO),
+                plan(),
+                context(),
+                dependency_states=DEPENDENCIES,
+                clock=lambda: NOW,
+            )
+        self.assertEqual(denied, [("TASK-0011", "ExecutionPolicyError")])
+
     def test_success_is_deterministic_immutable_and_does_not_mutate_task(self) -> None:
         original = task()
         engine = ExecutionEngine(AdapterRegistry((NoOpAdapter("memory", frozenset({"record"})),)))
