@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import re
 
+from ai_os.controller import ControllerStage
+from ai_os.workflows import WorkflowStatus
+
 from .errors import ObservabilityValidationError
 
 _KEYS = (
@@ -22,8 +25,12 @@ _KEYS = (
 _SAFE_CORRELATION_PATTERNS = {
     "attempt": re.compile(r"^[1-9][0-9]{0,8}$"),
     "source_sequence": re.compile(r"^[1-9][0-9]{0,8}$"),
-    "stage": re.compile(r"^[A-Z][A-Z0-9_]{0,63}$"),
 }
+_SAFE_STAGES = frozenset(
+    {stage.value for stage in ControllerStage}
+    | {status.value for status in WorkflowStatus}
+    | {"AUTHORIZATION"}
+)
 
 
 def sensitive_key(value: str) -> bool:
@@ -45,6 +52,8 @@ def redact_pairs(values: tuple[tuple[str, str], ...]) -> tuple[tuple[str, str], 
         if not clean_key:
             raise ObservabilityValidationError("correlation keys must not be empty")
         pattern = _SAFE_CORRELATION_PATTERNS.get(clean_key)
-        is_safe = pattern is not None and pattern.fullmatch(value) is not None
+        is_safe = (clean_key == "stage" and value in _SAFE_STAGES) or (
+            pattern is not None and pattern.fullmatch(value) is not None
+        )
         redacted.append((clean_key, value if is_safe else "[REDACTED]"))
     return tuple(redacted)

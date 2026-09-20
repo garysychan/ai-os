@@ -99,3 +99,18 @@ def test_allowlisted_correlation_keys_use_key_specific_grammars() -> None:
         ("trace_id", "[REDACTED]"),
         ("source_sequence", "2"),
     )
+
+
+def test_stage_allowlist_rejects_uppercase_private_data() -> None:
+    result = sanitize_event(
+        replace(event(), correlation=(("stage", "CONFIDENTIAL_CUSTOMER_RECORD"),))
+    )
+
+    assert result.correlation == (("stage", "[REDACTED]"),)
+
+
+def test_agent_role_must_be_canonical() -> None:
+    unsafe = replace(event(), agent_role="/home/alice/private/customer-record")
+
+    with pytest.raises(ObservabilityValidationError, match="canonical AgentRole"):
+        sanitize_event(unsafe)

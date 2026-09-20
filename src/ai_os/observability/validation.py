@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import replace
 
-from ai_os.agents import Permission, PermissionPolicy
+from ai_os.agents import AgentRole, Permission, PermissionPolicy
 
 from .errors import ObservabilityAuthorizationError, ObservabilityValidationError
 from .models import AuditQueryContext, RuntimeEvent
@@ -42,6 +42,11 @@ def validate_event(event: RuntimeEvent, *, allow_unsequenced: bool = False) -> R
         raise ObservabilityValidationError("task_id must use TASK-NNNN format")
     if not event.summary.strip():
         raise ObservabilityValidationError("event summary must not be empty")
+    if event.agent_role is not None:
+        try:
+            AgentRole(event.agent_role.strip())
+        except ValueError as error:
+            raise ObservabilityValidationError("agent_role must be a canonical AgentRole") from error
     keys = [key for key, _ in event.correlation]
     if len(keys) != len(set(keys)):
         raise ObservabilityValidationError("correlation keys must be unique")
@@ -60,7 +65,11 @@ def sanitize_event(event: RuntimeEvent, *, allow_unsequenced: bool = False) -> R
         workflow_session_id=_clean_optional(validated.workflow_session_id),
         execution_id=_clean_optional(validated.execution_id),
         invocation_id=_clean_optional(validated.invocation_id),
-        agent_role=_clean_optional(validated.agent_role),
+        agent_role=(
+            AgentRole(validated.agent_role.strip()).value
+            if validated.agent_role is not None
+            else None
+        ),
         correlation=redact_pairs(validated.correlation),
         evidence=tuple(redact_text(item) for item in validated.evidence),
     )

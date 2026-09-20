@@ -1003,6 +1003,12 @@ Notes:
 - Round 3 regression validation passed 197 tests and 7 subtests; Task Schema, Python compile and
   Control Plane checks passed with no new blocker. The prior shared validation environment lost its
   Python executable, so Ruff and strict mypy revalidation must be confirmed by GitHub CI.
+- Final Reviewer Round 3 kept one blocker open: uppercase private data could pass the stage format
+  check and `agent_role` accepted arbitrary strings.
+- Reviewer Fix Cycle Round 4 replaced the stage format check with canonical Controller/Workflow
+  stage allowlists and rejects non-canonical Agent roles before persistence or presentation.
+- Round 4 regression validation passed 199 tests and 7 subtests; Python compile and diff checks
+  passed. Ruff and strict mypy remain delegated to the required GitHub Python 3.11/3.12 checks.
 
 ## Task Change Rules
 
