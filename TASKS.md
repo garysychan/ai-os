@@ -897,16 +897,16 @@ authority or exposing secrets.
 Acceptance Criteria:
 - [x] A canonical immutable runtime event envelope identifies event, timestamp, task, session,
   workflow, execution, Agent and correlation context where applicable.
-- [x] Existing Controller, Execution, Adapter, Tool and Workflow evidence is normalized through
+- [ ] Existing Controller, Execution, Adapter, Tool and Workflow evidence is normalized through
   explicit integration boundaries without duplicating their decision authority.
 - [x] Lifecycle events cover accepted, started, completed, failed, cancelled, denied and timed-out
   outcomes where applicable.
-- [x] Permission and approval decisions are traceable without recording credentials or sensitive
+- [ ] Permission and approval decisions are traceable without recording credentials or sensitive
   payloads.
-- [x] Redaction is fail-closed, deterministic and applied before persistence or presentation.
+- [ ] Redaction is fail-closed, deterministic and applied before persistence or presentation.
 - [x] Audit records are append-only and reject invalid ordering, malformed identifiers and
   integrity violations.
-- [x] SQLite persistence supports atomic event append, bounded queries, retention and reopen
+- [ ] SQLite persistence supports atomic event append, bounded queries, retention and reopen
   recovery through the existing Persistent Runtime Store boundary.
 - [x] Correlation preserves `task_id`, `session_id`, `workflow_session_id`, `execution_id`,
   `invocation_id` and `trace_id` relationships when those identifiers exist.
@@ -916,7 +916,7 @@ Acceptance Criteria:
 - [x] Observability failure cannot silently authorize, replay or alter an execution outcome.
 - [x] Existing public APIs remain backward compatible unless a separately approved change states
   otherwise.
-- [x] Positive, negative, redaction, permission, ordering, corruption, persistence and
+- [ ] Positive, negative, redaction, permission, ordering, corruption, persistence and
   cross-process tests exist.
 - [ ] Tests pass on Python 3.11 and Python 3.12.
 - [x] Coverage remains at or above the configured 80% threshold.
@@ -984,6 +984,10 @@ Notes:
   rendered sanitized human-readable event details.
 - Post-fix local validation passed 189 tests and 7 subtests with 85.12% branch coverage; Ruff,
   strict mypy, package build, Task Schema and Control Plane checks passed with no new blocker.
+- Whole-branch Reviewer revalidation remained `REQUEST_CHANGES`: arbitrary opaque evidence is not
+  default-redacted, same-trace concurrent sequence allocation is not serialized, and
+  pre-execution denial evidence is incomplete outside the Adapter boundary. The affected
+  acceptance criteria were reopened and TASK-0017 remains `IN_PROGRESS`.
 
 ## Task Change Rules
 
