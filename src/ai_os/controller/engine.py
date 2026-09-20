@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from contextlib import suppress
 from dataclasses import replace
 from datetime import UTC, datetime
 
@@ -23,6 +24,7 @@ from .models import (
     ControllerOutcome,
     ControllerSession,
     ControllerStage,
+    TraceEvent,
 )
 from .policy import ControllerPolicy
 from .session import (
@@ -42,10 +44,12 @@ class ControllerEngine:
         runtime: AgentRuntime,
         state_machine: StateMachine | None = None,
         policy: ControllerPolicy | None = None,
+        event_sink: Callable[[TraceEvent, ControllerOutcome | None], None] | None = None,
     ) -> None:
         self.runtime = runtime
         self.state_machine = state_machine or StateMachine()
         self.policy = policy or ControllerPolicy()
+        self.event_sink = event_sink
 
     def start(
         self,
@@ -63,13 +67,15 @@ class ControllerEngine:
             dependency_states,
             max_fix_attempts=max_fix_attempts,
         )
-        return create_session(
+        session = create_session(
             task,
             objective,
             started_at=started_at,
             max_fix_attempts=max_fix_attempts,
             approval_evidence=approval_evidence,
         )
+        self._emit(session.events[-1], None)
+        return session
 
     def dispatch(
         self,
@@ -98,6 +104,7 @@ class ControllerEngine:
             reason=f"Dispatch {capability.value}",
             evidence=evidence,
         )
+        self._emit(dispatched.events[-1], None)
         request = ExecutionRequest(
             task=task,
             capability=capability,
@@ -109,7 +116,9 @@ class ControllerEngine:
             evidence=evidence,
         )
         result = self.runtime.execute(request, dependency_states=dependency_states)
-        return record_result(dispatched, result, stage=stage, timestamp=timestamp), result
+        recorded = record_result(dispatched, result, stage=stage, timestamp=timestamp)
+        self._emit(recorded.events[-1], None)
+        return recorded, result
 
     def transition(
         self,
@@ -127,7 +136,9 @@ class ControllerEngine:
             context,
             occurred_at=occurred_at,
         )
-        return record_transition(session, event), updated_task
+        recorded = record_transition(session, event)
+        self._emit(recorded.events[-1], None)
+        return recorded, updated_task
 
     def terminate(
         self,
@@ -138,13 +149,20 @@ class ControllerEngine:
         reason: str,
         findings: tuple[str, ...] = (),
     ) -> ControllerSession:
-        return terminate_session(
+        terminal = terminate_session(
             session,
             outcome,
             timestamp=timestamp,
             reason=reason,
             findings=findings,
         )
+        self._emit(terminal.events[-1], outcome)
+        return terminal
+
+    def _emit(self, event: TraceEvent, outcome: ControllerOutcome | None) -> None:
+        if self.event_sink is not None:
+            with suppress(Exception):
+                self.event_sink(event, outcome)
 
     def run_lifecycle(
         self,

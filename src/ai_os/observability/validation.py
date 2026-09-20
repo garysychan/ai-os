@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import replace
 
 from .errors import ObservabilityValidationError
@@ -17,12 +18,15 @@ _IDENTIFIERS = (
     "execution_id",
     "invocation_id",
 )
+_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$")
+_TASK_PATTERN = re.compile(r"^TASK-[0-9]{4,}$")
 
 
-def validate_event(event: RuntimeEvent) -> RuntimeEvent:
+def validate_event(event: RuntimeEvent, *, allow_unsequenced: bool = False) -> RuntimeEvent:
     if event.schema_version != 1:
         raise ObservabilityValidationError("unsupported runtime event schema version")
-    if isinstance(event.sequence, bool) or event.sequence < 1:
+    minimum = 0 if allow_unsequenced else 1
+    if isinstance(event.sequence, bool) or event.sequence < minimum:
         raise ObservabilityValidationError("event sequence must be positive")
     if event.timestamp.tzinfo is None or event.timestamp.utcoffset() is None:
         raise ObservabilityValidationError("event timestamp must be timezone-aware")
@@ -30,6 +34,10 @@ def validate_event(event: RuntimeEvent) -> RuntimeEvent:
         value = getattr(event, field)
         if value is not None and (not isinstance(value, str) or not value.strip()):
             raise ObservabilityValidationError(f"{field} must not be empty")
+        if value is not None and _ID_PATTERN.fullmatch(value.strip()) is None:
+            raise ObservabilityValidationError(f"{field} has an invalid format")
+    if _TASK_PATTERN.fullmatch(event.task_id.strip()) is None:
+        raise ObservabilityValidationError("task_id must use TASK-NNNN format")
     if not event.summary.strip():
         raise ObservabilityValidationError("event summary must not be empty")
     keys = [key for key, _ in event.correlation]
@@ -38,8 +46,8 @@ def validate_event(event: RuntimeEvent) -> RuntimeEvent:
     return event
 
 
-def sanitize_event(event: RuntimeEvent) -> RuntimeEvent:
-    validated = validate_event(event)
+def sanitize_event(event: RuntimeEvent, *, allow_unsequenced: bool = False) -> RuntimeEvent:
+    validated = validate_event(event, allow_unsequenced=allow_unsequenced)
     sanitized = replace(
         validated,
         event_id=validated.event_id.strip(),
@@ -54,7 +62,7 @@ def sanitize_event(event: RuntimeEvent) -> RuntimeEvent:
         correlation=redact_pairs(validated.correlation),
         evidence=tuple(redact_text(item) for item in validated.evidence),
     )
-    return validate_event(sanitized)
+    return validate_event(sanitized, allow_unsequenced=allow_unsequenced)
 
 
 def _clean_optional(value: str | None) -> str | None:

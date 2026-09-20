@@ -1,6 +1,7 @@
 """Governed Tool facade that always delegates execution to AdapterService."""
 
 from collections.abc import Callable
+from contextlib import suppress
 from datetime import datetime
 
 from ai_os.adapters import AdapterInvocation, AdapterService
@@ -17,12 +18,14 @@ class ToolService:
         registry: ToolRegistry,
         adapter_service: AdapterService,
         policy: ToolPolicy | None = None,
+        audit_sink: Callable[[ToolInvocation, ToolResult], None] | None = None,
     ) -> None:
         if adapter_service.registry is not registry.adapter_registry:
             raise ValueError("ToolRegistry and AdapterService must share one AdapterRegistry")
         self.registry = registry
         self.adapter_service = adapter_service
         self.policy = policy or ToolPolicy()
+        self.audit_sink = audit_sink
 
     def execute(
         self,
@@ -53,10 +56,14 @@ class ToolService:
         result, audit = self.adapter_service.execute(
             task, adapter_invocation, clock=clock, cancelled=cancelled
         )
-        return ToolResult(
+        tool_result = ToolResult(
             invocation.tool,
             invocation.version,
             invocation.operation,
             result,
             audit,
         )
+        if self.audit_sink is not None:
+            with suppress(Exception):
+                self.audit_sink(invocation, tool_result)
+        return tool_result

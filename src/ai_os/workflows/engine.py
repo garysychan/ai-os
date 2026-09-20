@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from contextlib import suppress
 from dataclasses import replace
 from datetime import UTC, datetime
 
@@ -46,11 +47,13 @@ class WorkflowEngine:
         controller: ControllerEngine,
         policy: WorkflowPolicy | None = None,
         store: WorkflowSessionStore | None = None,
+        event_sink: Callable[[WorkflowEvent, WorkflowStatus | None, bool], None] | None = None,
     ) -> None:
         self.registry = registry
         self.controller = controller
         self.policy = policy or WorkflowPolicy()
         self.store = store or InMemoryWorkflowStore()
+        self.event_sink = event_sink
 
     def start(
         self,
@@ -110,6 +113,7 @@ class WorkflowEngine:
             definition_fingerprint(definition),
         )
         self.store.save(session)
+        self._emit(event, None)
         return session
 
     def run(
@@ -222,6 +226,9 @@ class WorkflowEngine:
             controller_session_id=controller_session.session_id,
         )
         self.store.save(terminal)
+        for event in terminal.events[len(session.events) :]:
+            emitted_status = terminal.status if event.event_type == "SESSION_TERMINATED" else None
+            self._emit(event, emitted_status)
         return WorkflowResult(
             terminal,
             updated_task,
@@ -379,14 +386,21 @@ class WorkflowEngine:
             timestamp,
             reason,
         )
-        self.store.save(
-            replace(
-                session,
-                status=status,
-                updated_at=timestamp,
-                events=(*session.events, event),
-            )
+        updated = replace(
+            session,
+            status=status,
+            updated_at=timestamp,
+            events=(*session.events, event),
         )
+        self.store.save(updated)
+        self._emit(event, status, timed_out="deadline" in reason.casefold())
+
+    def _emit(
+        self, event: WorkflowEvent, status: WorkflowStatus | None, timed_out: bool = False
+    ) -> None:
+        if self.event_sink is not None:
+            with suppress(Exception):
+                self.event_sink(event, status, timed_out)
 
     def validate_resume(self, session_id: str) -> WorkflowSession:
         session = self.store.get(session_id)

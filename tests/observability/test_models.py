@@ -31,9 +31,9 @@ def event() -> RuntimeEvent:
 
 def test_sanitize_event_redacts_sensitive_values_before_persistence() -> None:
     result = sanitize_event(event())
-    assert result.summary == "started token=[REDACTED]"
+    assert result.summary == "[REDACTED]"
     assert result.correlation[-1] == ("api_key", "[REDACTED]")
-    assert result.evidence == ("Authorization:[REDACTED]",)
+    assert result.evidence == ("[REDACTED]",)
     assert "do-not-store" not in repr(result)
 
 
@@ -47,8 +47,23 @@ def test_sanitize_event_redacts_sensitive_values_before_persistence() -> None:
         {"summary": ""},
         {"timestamp": datetime(2026, 9, 20)},
         {"correlation": (("same", "1"), ("same", "2"))},
+        {"event_id": "event\n1"},
+        {"trace_id": "trace\x001"},
+        {"task_id": "not-a-task"},
     ],
 )
 def test_invalid_events_fail_closed(changed: dict[str, object]) -> None:
     with pytest.raises(ObservabilityValidationError):
         sanitize_event(replace(event(), **changed))
+
+
+def test_opaque_bearer_and_provider_payload_are_redacted_entirely() -> None:
+    result = sanitize_event(
+        replace(
+            event(),
+            summary="Authorization: Bearer supersecret",
+            evidence=('provider_payload={"token": "raw-secret", "prompt": "private"}',),
+        )
+    )
+    assert result.summary == "[REDACTED]"
+    assert result.evidence == ("[REDACTED]",)

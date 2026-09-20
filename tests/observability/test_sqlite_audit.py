@@ -57,8 +57,8 @@ def test_append_reopen_filter_and_redaction(tmp_path: Path) -> None:
         filters=RuntimeEventFilter(trace_id="trace-1", execution_id="execution-1"), limit=10
     )
     assert [item.sequence for item in results] == [1, 2]
-    assert results[0].summary == "token=[REDACTED]"
-    assert results[0].evidence == ("secret=[REDACTED]",)
+    assert results[0].summary == "[REDACTED]"
+    assert results[0].evidence == ("[REDACTED]",)
     assert reopened.get_runtime_event("event-2") == results[1]
 
 
@@ -101,3 +101,19 @@ def test_prune_includes_runtime_events(tmp_path: Path) -> None:
     result = item.prune(before=NOW + timedelta(days=1), limit=10)
     assert result.runtime_events == 1
     assert item.status().runtime_events == 0
+
+
+def test_store_allocates_global_sequence_and_trace_orders_by_sequence(tmp_path: Path) -> None:
+    item = store(tmp_path / "runtime.sqlite3")
+    later_clock = replace(event(), sequence=0, timestamp=NOW + timedelta(hours=1))
+    earlier_clock = replace(
+        event(2, event_id="event-2"), sequence=0, timestamp=NOW - timedelta(hours=1)
+    )
+    assert item.append_runtime_event(later_clock).sequence == 1
+    assert item.append_runtime_event(earlier_clock).sequence == 2
+    assert [
+        entry.event_id
+        for entry in item.list_runtime_events(
+            filters=RuntimeEventFilter(trace_id="trace-1"), limit=10
+        )
+    ] == ["event-1", "event-2"]

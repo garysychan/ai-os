@@ -1548,12 +1548,26 @@ def _run_observability(args: argparse.Namespace) -> int:
             else f"RUNTIME OBSERVABILITY\nStatus: FAIL\nError: {error}"
         )
         return 2
-    print(
-        json.dumps(payload, indent=2)
-        if args.json
-        else f"{operation}\nEvents: {len(events)}\nStatus: PASS"
-    )
+    print(json.dumps(payload, indent=2) if args.json else _human_runtime_events(operation, events))
     return 0
+
+
+def _human_runtime_events(operation: str, events: tuple[RuntimeEvent, ...]) -> str:
+    lines = [operation, f"Events: {len(events)}"]
+    for event in events:
+        lines.extend(
+            (
+                f"[{event.sequence}] {event.timestamp.isoformat()} "
+                f"{event.source.value}/{event.event_type.value}",
+                f"  Event: {event.event_id}",
+                f"  Task: {event.task_id}  Trace: {event.trace_id}",
+                f"  Summary: {event.summary}",
+                f"  Correlation: {dict(event.correlation)}",
+                f"  Evidence: {list(event.evidence)}",
+            )
+        )
+    lines.append("Status: PASS")
+    return "\n".join(lines)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

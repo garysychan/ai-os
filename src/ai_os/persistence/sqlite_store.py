@@ -6,6 +6,7 @@ import os
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
@@ -311,11 +312,10 @@ class SQLiteRuntimeStore:
                 ).fetchall()
         return tuple(load_adapter_audit(row[0]) for row in rows)
 
-    def append_runtime_event(self, event: RuntimeEvent) -> None:
+    def append_runtime_event(self, event: RuntimeEvent) -> RuntimeEvent:
         """Append sanitized evidence while enforcing strict per-trace ordering."""
         try:
-            item = sanitize_event(event)
-            payload = dump_runtime_event(item)
+            item = sanitize_event(event, allow_unsequenced=True)
         except ObservabilityValidationError as error:
             raise PersistenceIntegrityError(str(error)) from error
         with self._ready_connection() as connection:
@@ -326,10 +326,12 @@ class SQLiteRuntimeStore:
                         (item.trace_id,),
                     ).fetchone()
                     expected = int(row[0]) + 1
-                    if item.sequence != expected:
+                    if item.sequence not in {0, expected}:
                         raise PersistenceIntegrityError(
                             f"runtime event sequence must be {expected} for trace {item.trace_id}"
                         )
+                    item = replace(item, sequence=expected)
+                    payload = dump_runtime_event(item)
                     connection.execute(
                         """INSERT INTO runtime_events(
                              event_id, trace_id, sequence, task_id, execution_id,
@@ -354,6 +356,7 @@ class SQLiteRuntimeStore:
                 ) from error
             except sqlite3.DatabaseError as error:
                 raise PersistenceError("runtime event append failed") from error
+        return item
 
     def get_runtime_event(self, event_id: str) -> RuntimeEvent:
         payload = self._get_payload("runtime_events", "event_id", event_id)
@@ -386,12 +389,15 @@ class SQLiteRuntimeStore:
                 clauses.append(f"{column} = ?")
                 values.append(value)
         where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
+        order = (
+            "trace_id, sequence"
+            if selected.trace_id is not None
+            else "timestamp, trace_id, sequence"
+        )
         values.append(bounded)
         with self._ready_connection() as connection:
             rows = connection.execute(
-                "SELECT payload FROM runtime_events"
-                + where
-                + " ORDER BY timestamp, trace_id, sequence LIMIT ?",
+                "SELECT payload FROM runtime_events" + where + f" ORDER BY {order} LIMIT ?",
                 tuple(values),
             ).fetchall()
         try:

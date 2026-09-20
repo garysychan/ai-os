@@ -967,12 +967,23 @@ Notes:
   `feature/runtime-observability-audit`; TASK-0017 transitioned to `IN_PROGRESS`.
 - Runtime Observability Core, explicit evidence normalizers, SQLite schema v2 persistence and
   `audit`/`trace` CLI inspection are installed without adding execution authority.
-- Local Python 3.12 validation passed 178 tests and 7 subtests with 85.55% branch coverage; Ruff,
+- Local Python 3.12 validation passed 189 tests and 7 subtests with 85.12% branch coverage; Ruff,
   strict mypy and package build passed.
 - Control Plane Consistency Check completed with `WARNING` and no new blocking finding; all
   reported warnings pre-date TASK-0017 and remain governed separately.
 - Python 3.11 CI, independent Whole-branch Reviewer validation and protected Pull Request
   governance remain pending.
+- Initial Whole-branch Reviewer validation returned `REQUEST_CHANGES`: opaque credential and
+  provider payloads could leak, runtime sinks and Tool evidence were incomplete, terminal outcomes
+  could be misclassified, cross-source sequences collided, trace ordering used timestamps,
+  identifiers were under-validated and human CLI output lacked inspectable evidence.
+- Reviewer Fix Cycle changed sensitive opaque text to fail-closed whole-field redaction; added
+  dependency-injected Controller, Execution, Adapter, Tool and Workflow evidence sinks; mapped
+  denied, failed, cancelled and timed-out outcomes explicitly; added atomic global trace sequence
+  allocation and sequence-ordered reconstruction; enforced bounded identifier grammars; and
+  rendered sanitized human-readable event details.
+- Post-fix local validation passed 189 tests and 7 subtests with 85.12% branch coverage; Ruff,
+  strict mypy, package build, Task Schema and Control Plane checks passed with no new blocker.
 
 ## Task Change Rules
 
