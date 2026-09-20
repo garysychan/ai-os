@@ -1015,6 +1015,9 @@ Notes:
 - The first post-review Python 3.11/3.12 run failed only Ruff E501 because one validation line was
   101 characters against the 100-character limit. The CI Fix Cycle split that statement without
   changing runtime behavior; fresh Python 3.11/3.12 checks remain required.
+- The next Python 3.11/3.12 run passed Ruff lint but failed `ruff format --check` on one CLI call.
+  CI Fix Cycle Round 2 applied the formatter's exact one-line output without changing behavior;
+  fresh Python 3.11/3.12 checks remain required.
 
 ## Task Change Rules
 

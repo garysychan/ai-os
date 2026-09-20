@@ -1518,9 +1518,7 @@ def _runtime_event_payload(event: Any) -> dict[str, Any]:
 
 def _run_observability(args: argparse.Namespace) -> int:
     try:
-        authorize_query(
-            AuditQueryContext(AgentRole(args.actor_role), Permission.READ_CONTROL)
-        )
+        authorize_query(AuditQueryContext(AgentRole(args.actor_role), Permission.READ_CONTROL))
         store = SQLiteRuntimeStore(StoreConfig(database=args.database))
         events: tuple[RuntimeEvent, ...]
         if args.command == "audit" and args.audit_command == "show":
