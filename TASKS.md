@@ -787,7 +787,7 @@ Notes:
 
 Priority: P1
 Agent: Controller / Planner / Researcher / Developer / Tester / Reviewer / Fixer
-Status: IN_PROGRESS
+Status: REVIEW
 Dependencies: TASK-0004, TASK-0005, TASK-0010, TASK-0011, TASK-0012, TASK-0013, TASK-0014, TASK-0015
 
 Description:
@@ -796,23 +796,23 @@ top of the approved Workflow Engine Core without widening Agent permissions, byp
 authority or embedding provider-specific behavior.
 
 Acceptance Criteria:
-- [ ] TRACE, Investment and Deep Research definitions have explicit names and semantic versions.
-- [ ] Every declared stage maps to one canonical Agent role, capability and required permission.
-- [ ] Workflow-specific drivers execute only stages declared by the selected definition.
-- [ ] Unknown drivers, stages, versions and invalid stage ordering fail closed.
-- [ ] Workflow packs cannot grant permissions or bypass Task assignment and dependency gates.
-- [ ] External data, Tool and Adapter operations remain governed by their existing policies.
-- [ ] Stage, retry, deadline, cancellation and approval budgets are enforced before dispatch.
-- [ ] Investment and Deep Research outputs distinguish facts, inference and assumptions.
-- [ ] Checkpoints bind to the exact Workflow name, version, stage plan and policy budget.
-- [ ] CLI supports listing, describing, validating and dry-running each Workflow pack.
-- [ ] Coding Workflow and existing public APIs remain backward compatible.
-- [ ] Authoritative architecture and workflow documents reflect implemented behavior.
-- [ ] Positive, negative, permission, budget, checkpoint and cross-process tests exist.
-- [ ] Tests pass on Python 3.11 and Python 3.12.
-- [ ] Coverage remains at or above the configured 80% threshold.
-- [ ] Control Plane Consistency Check has no new blocking finding.
-- [ ] Whole-branch Reviewer result is APPROVE.
+- [x] TRACE, Investment and Deep Research definitions have explicit names and semantic versions.
+- [x] Every declared stage maps to one canonical Agent role, capability and required permission.
+- [x] Workflow-specific drivers execute only stages declared by the selected definition.
+- [x] Unknown drivers, stages, versions and invalid stage ordering fail closed.
+- [x] Workflow packs cannot grant permissions or bypass Task assignment and dependency gates.
+- [x] External data, Tool and Adapter operations remain governed by their existing policies.
+- [x] Stage, retry, deadline, cancellation and approval budgets are enforced before dispatch.
+- [x] Investment and Deep Research outputs distinguish facts, inference and assumptions.
+- [x] Checkpoints bind to the exact Workflow name, version, stage plan and policy budget.
+- [x] CLI supports listing, describing, validating and dry-running each Workflow pack.
+- [x] Coding Workflow and existing public APIs remain backward compatible.
+- [x] Authoritative architecture and workflow documents reflect implemented behavior.
+- [x] Positive, negative, permission, budget, checkpoint and cross-process tests exist.
+- [x] Tests pass on Python 3.11 and Python 3.12.
+- [x] Coverage remains at or above the configured 80% threshold.
+- [x] Control Plane Consistency Check has no new blocking finding.
+- [x] Whole-branch Reviewer result is APPROVE.
 - [ ] Protected Pull Request governance passes before merge.
 
 Artifacts:
@@ -863,6 +863,10 @@ Notes:
   before Reviewer dispatch.
 - Post-fix local validation passed 160 tests and 7 subtests with 85.63% branch coverage; Ruff,
   formatting and mypy passed. Control Plane status remains `WARNING` with no new blocker.
+- Post-fix GitHub Actions Control Plane Check Run #148 passed on commit `06aa081` for Python 3.11
+  and Python 3.12.
+- Whole-branch Reviewer revalidation result: `APPROVE`; all original findings are resolved and
+  TASK-0016 transitioned from `IN_PROGRESS` to `REVIEW`, ready for Pull Request review.
 
 ## Task Change Rules
 
