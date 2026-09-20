@@ -787,7 +787,7 @@ Notes:
 
 Priority: P1
 Agent: Controller / Planner / Researcher / Developer / Tester / Reviewer / Fixer
-Status: IN_PROGRESS
+Status: REVIEW
 Dependencies: TASK-0004, TASK-0005, TASK-0010, TASK-0011, TASK-0012, TASK-0013, TASK-0014, TASK-0015
 
 Description:
@@ -870,6 +870,11 @@ Notes:
 - PR #44 Run 35487670252 failed on Python 3.11 and Python 3.12 because the cross-process dry-run
   test reused authoritative TASK-0016 after its status became `REVIEW`; TASK-0016 returned to
   `IN_PROGRESS` for a test-isolation Fix Cycle.
+- Test-isolation Fix Cycle replaced the mutable authoritative Task dependency with an independent
+  `TASK-9998` fixture; local validation passed and PR #44 Run 35494291603 passed on commit
+  `560f4da` for Python 3.11 and Python 3.12.
+- Final whole-branch Reviewer revalidation result: `APPROVE`; no unresolved blocking finding.
+  TASK-0016 transitioned from `IN_PROGRESS` to `REVIEW` pending protected merge governance.
 
 ## Task Change Rules
 
