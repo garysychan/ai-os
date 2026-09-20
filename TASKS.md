@@ -787,7 +787,7 @@ Notes:
 
 Priority: P1
 Agent: Controller / Planner / Researcher / Developer / Tester / Reviewer / Fixer
-Status: REVIEW
+Status: IN_PROGRESS
 Dependencies: TASK-0004, TASK-0005, TASK-0010, TASK-0011, TASK-0012, TASK-0013, TASK-0014, TASK-0015
 
 Description:
@@ -867,6 +867,9 @@ Notes:
   and Python 3.12.
 - Whole-branch Reviewer revalidation result: `APPROVE`; all original findings are resolved and
   TASK-0016 transitioned from `IN_PROGRESS` to `REVIEW`, ready for Pull Request review.
+- PR #44 Run 35487670252 failed on Python 3.11 and Python 3.12 because the cross-process dry-run
+  test reused authoritative TASK-0016 after its status became `REVIEW`; TASK-0016 returned to
+  `IN_PROGRESS` for a test-isolation Fix Cycle.
 
 ## Task Change Rules
 

@@ -138,6 +138,27 @@ def test_workflow_dry_run_and_session_across_processes(tmp_path: Path) -> None:
 
 def test_workflow_pack_dry_run_across_processes(tmp_path: Path) -> None:
     source = Path(__file__).parent.parent
+    repository = tmp_path / "pack-repository"
+    repository.mkdir()
+    for name in (
+        "CONTROL_PLANE.md",
+        "AGENTS.md",
+        "PROJECT_RULES.md",
+        "ARCHITECTURE.md",
+        "WORKFLOW.md",
+        "TASKS.md",
+    ):
+        shutil.copy2(source / name, repository / name)
+    with (repository / "TASKS.md").open("a", encoding="utf-8") as tasks:
+        tasks.write(
+            "\n## TASK-9998 — Workflow Pack CLI Fixture\n\n"
+            "Priority: P2\n"
+            "Agent: Planner / Researcher / Reviewer\n"
+            "Status: IN_PROGRESS\n"
+            "Dependencies: None\n\n"
+            "Description:\nValidate isolated Workflow Pack CLI execution.\n\n"
+            "Acceptance Criteria:\n- [ ] Pack dry-run is governed.\n"
+        )
     store = tmp_path / "workflow-pack-store"
     environment = os.environ | {"PYTHONPATH": str(source / "src")}
     created = subprocess.run(
@@ -148,18 +169,18 @@ def test_workflow_pack_dry_run_across_processes(tmp_path: Path) -> None:
             "workflow",
             "dry-run",
             "investment",
-            "TASK-0016",
+            "TASK-9998",
             "--version",
             "1.0.0",
             "--objective",
             "dry-run governed investment research",
             "--root",
-            str(source),
+            str(repository),
             "--store",
             str(store),
             "--json",
         ],
-        cwd=source,
+        cwd=repository,
         env=environment,
         check=True,
         capture_output=True,
