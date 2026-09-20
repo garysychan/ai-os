@@ -17,7 +17,7 @@ from ai_os.controller import (
 from ai_os.tasks import ReviewResult, Task, TaskStatus
 from ai_os.workflow import TransitionContext
 
-from .errors import WorkflowPolicyError
+from .errors import WorkflowError, WorkflowPolicyError
 from .fingerprint import definition_fingerprint
 from .models import (
     WorkflowDefinition,
@@ -48,12 +48,14 @@ class WorkflowEngine:
         policy: WorkflowPolicy | None = None,
         store: WorkflowSessionStore | None = None,
         event_sink: Callable[[WorkflowEvent, WorkflowStatus | None, bool], None] | None = None,
+        denial_sink: Callable[[str, str, datetime, str], None] | None = None,
     ) -> None:
         self.registry = registry
         self.controller = controller
         self.policy = policy or WorkflowPolicy()
         self.store = store or InMemoryWorkflowStore()
         self.event_sink = event_sink
+        self.denial_sink = denial_sink
 
     def start(
         self,
@@ -68,19 +70,27 @@ class WorkflowEngine:
         approval_evidence: tuple[str, ...] = (),
         max_fix_attempts: int | None = None,
     ) -> WorkflowSession:
-        definition = self.registry.resolve(workflow, version)
-        fix_budget = definition.max_fix_attempts if max_fix_attempts is None else max_fix_attempts
-        self.policy.authorize(
-            task,
-            definition,
-            dependency_states,
-            now=started_at,
-            deadline=deadline,
-            approval_evidence=approval_evidence,
-            max_fix_attempts=fix_budget,
-        )
-        if not objective.strip():
-            raise WorkflowPolicyError("Workflow objective must not be empty")
+        try:
+            definition = self.registry.resolve(workflow, version)
+            fix_budget = (
+                definition.max_fix_attempts if max_fix_attempts is None else max_fix_attempts
+            )
+            self.policy.authorize(
+                task,
+                definition,
+                dependency_states,
+                now=started_at,
+                deadline=deadline,
+                approval_evidence=approval_evidence,
+                max_fix_attempts=fix_budget,
+            )
+            if not objective.strip():
+                raise WorkflowPolicyError("Workflow objective must not be empty")
+        except WorkflowError as error:
+            if self.denial_sink is not None:
+                with suppress(Exception):
+                    self.denial_sink(task.task_id, workflow, started_at, type(error).__name__)
+            raise
         session_id = (
             f"workflow:{task.task_id}:{definition.name}:{definition.version}:"
             f"{int(started_at.timestamp() * 1_000_000)}"

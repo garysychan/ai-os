@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from ai_os.tasks import Task, TaskStatus
 
 from .context import append_event, create_session, finish_session, record_result
-from .errors import ExecutionValidationError
+from .errors import ExecutionEngineError, ExecutionValidationError
 from .models import (
     ExecutionContext,
     ExecutionEvent,
@@ -33,10 +33,12 @@ class ExecutionEngine:
         registry: AdapterRegistry,
         policy: ExecutionPolicy | None = None,
         event_sink: Callable[[ExecutionEvent, str | None, bool], None] | None = None,
+        denial_sink: Callable[[str, datetime, str], None] | None = None,
     ) -> None:
         self.registry = registry
         self.policy = policy or ExecutionPolicy()
         self.event_sink = event_sink
+        self.denial_sink = denial_sink
 
     def run(
         self,
@@ -51,10 +53,14 @@ class ExecutionEngine:
         now = clock or (lambda: datetime.now(UTC))
         is_cancelled = cancelled or (lambda: False)
         started_at = now()
-        self.policy.validate_start(task, plan, context, dependency_states, started_at)
-        for step in plan.steps:
-            adapter = self.registry.resolve(step.adapter, step.operation)
-            self.policy.validate_adapter(adapter)
+        try:
+            self.policy.validate_start(task, plan, context, dependency_states, started_at)
+            for step in plan.steps:
+                adapter = self.registry.resolve(step.adapter, step.operation)
+                self.policy.validate_adapter(adapter)
+        except ExecutionEngineError as error:
+            self._deny(task.task_id, started_at, type(error).__name__)
+            raise
 
         session = create_session(plan, context, started_at)
         self._emit(session.events[-1], None)
@@ -143,3 +149,8 @@ class ExecutionEngine:
         if self.event_sink is not None:
             with suppress(Exception):
                 self.event_sink(event, status, timed_out)
+
+    def _deny(self, task_id: str, timestamp: datetime, reason: str) -> None:
+        if self.denial_sink is not None:
+            with suppress(Exception):
+                self.denial_sink(task_id, timestamp, reason)

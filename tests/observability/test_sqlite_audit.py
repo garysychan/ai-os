@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -117,3 +118,29 @@ def test_store_allocates_global_sequence_and_trace_orders_by_sequence(tmp_path: 
             filters=RuntimeEventFilter(trace_id="trace-1"), limit=10
         )
     ] == ["event-1", "event-2"]
+
+
+def test_same_trace_concurrent_writers_receive_unique_sequences(tmp_path: Path) -> None:
+    database = tmp_path / "runtime.sqlite3"
+    store(database)
+
+    def append(index: int) -> int:
+        writer = SQLiteRuntimeStore(StoreConfig(database, busy_timeout_ms=10_000))
+        candidate = replace(
+            event(), event_id=f"concurrent-{index}", sequence=0, trace_id="trace-concurrent"
+        )
+        return writer.append_runtime_event(candidate).sequence
+
+    with ThreadPoolExecutor(max_workers=16) as executor:
+        sequences = tuple(executor.map(append, range(32)))
+
+    assert sorted(sequences) == list(range(1, 33))
+    reader = SQLiteRuntimeStore(StoreConfig(database))
+    assert (
+        len(
+            reader.list_runtime_events(
+                filters=RuntimeEventFilter(trace_id="trace-concurrent"), limit=100
+            )
+        )
+        == 32
+    )

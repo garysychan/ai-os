@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 from ai_os.agents import (
     AgentRole,
     AgentRuntime,
+    AgentRuntimeError,
     Capability,
     ExecutionRequest,
     ExecutionResult,
@@ -18,7 +19,7 @@ from ai_os.agents import (
 from ai_os.tasks import ReviewResult, Task, TaskStatus
 from ai_os.workflow import StateMachine, TransitionContext
 
-from .errors import ControllerPolicyError
+from .errors import ControllerError, ControllerPolicyError
 from .models import (
     ControllerEventType,
     ControllerOutcome,
@@ -45,11 +46,13 @@ class ControllerEngine:
         state_machine: StateMachine | None = None,
         policy: ControllerPolicy | None = None,
         event_sink: Callable[[TraceEvent, ControllerOutcome | None], None] | None = None,
+        denial_sink: Callable[[str, datetime, str], None] | None = None,
     ) -> None:
         self.runtime = runtime
         self.state_machine = state_machine or StateMachine()
         self.policy = policy or ControllerPolicy()
         self.event_sink = event_sink
+        self.denial_sink = denial_sink
 
     def start(
         self,
@@ -61,12 +64,16 @@ class ControllerEngine:
         max_fix_attempts: int = 2,
         approval_evidence: tuple[str, ...] = (),
     ) -> ControllerSession:
-        self.policy.validate_start(
-            task,
-            objective,
-            dependency_states,
-            max_fix_attempts=max_fix_attempts,
-        )
+        try:
+            self.policy.validate_start(
+                task,
+                objective,
+                dependency_states,
+                max_fix_attempts=max_fix_attempts,
+            )
+        except ControllerError as error:
+            self._deny(task.task_id, started_at, type(error).__name__)
+            raise
         session = create_session(
             task,
             objective,
@@ -115,7 +122,11 @@ class ControllerEngine:
             review_result=review_result,
             evidence=evidence,
         )
-        result = self.runtime.execute(request, dependency_states=dependency_states)
+        try:
+            result = self.runtime.execute(request, dependency_states=dependency_states)
+        except AgentRuntimeError as error:
+            self._deny(task.task_id, timestamp, type(error).__name__)
+            raise
         recorded = record_result(dispatched, result, stage=stage, timestamp=timestamp)
         self._emit(recorded.events[-1], None)
         return recorded, result
@@ -163,6 +174,11 @@ class ControllerEngine:
         if self.event_sink is not None:
             with suppress(Exception):
                 self.event_sink(event, outcome)
+
+    def _deny(self, task_id: str, timestamp: datetime, reason: str) -> None:
+        if self.denial_sink is not None:
+            with suppress(Exception):
+                self.denial_sink(task_id, timestamp, reason)
 
     def run_lifecycle(
         self,

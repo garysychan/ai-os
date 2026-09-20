@@ -67,3 +67,17 @@ def test_opaque_bearer_and_provider_payload_are_redacted_entirely() -> None:
     )
     assert result.summary == "[REDACTED]"
     assert result.evidence == ("[REDACTED]",)
+
+
+def test_unclassified_paths_and_private_content_are_default_redacted() -> None:
+    result = sanitize_event(
+        replace(
+            event(),
+            summary="ordinary looking private customer text",
+            evidence=("/home/alice/.ssh/id_rsa", "raw private customer content"),
+            correlation=(("stage", "REVIEWING"), ("unknown", "looks-safe")),
+        )
+    )
+    assert result.summary == "[REDACTED]"
+    assert result.evidence == ("[REDACTED]", "[REDACTED]")
+    assert result.correlation == (("stage", "REVIEWING"), ("unknown", "[REDACTED]"))

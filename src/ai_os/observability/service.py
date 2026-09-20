@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import datetime
 from typing import Protocol
+from uuid import uuid4
 
 from ai_os.adapters import AdapterAuditEvent
 from ai_os.controller import ControllerOutcome, TraceEvent
@@ -17,7 +19,7 @@ from ai_os.tools import ToolInvocation, ToolResult
 from ai_os.workflows import WorkflowEvent, WorkflowStatus
 
 from .integrations import from_adapter, from_controller, from_execution, from_tool, from_workflow
-from .models import RuntimeEvent, RuntimeEventFilter
+from .models import RuntimeEvent, RuntimeEventFilter, RuntimeEventSource, RuntimeEventType
 from .validation import sanitize_event
 
 
@@ -103,3 +105,74 @@ class ObservabilityService:
             self.record(from_workflow(event, trace_id=trace_id, status=status, timed_out=timed_out))
 
         return emit
+
+    def tool_denial_sink(self, trace_id: str) -> Callable[[ToolInvocation, datetime, str], None]:
+        def emit(invocation: ToolInvocation, timestamp: datetime, reason: str) -> None:
+            self.record(
+                self._denial(
+                    RuntimeEventSource.TOOL,
+                    invocation.task_id,
+                    trace_id,
+                    timestamp,
+                    reason,
+                    invocation_id=invocation.invocation_id,
+                    agent_role=invocation.agent_role.value,
+                )
+            )
+
+        return emit
+
+    def workflow_denial_sink(self, trace_id: str) -> Callable[[str, str, datetime, str], None]:
+        def emit(task_id: str, workflow: str, timestamp: datetime, reason: str) -> None:
+            self.record(
+                self._denial(
+                    RuntimeEventSource.WORKFLOW,
+                    task_id,
+                    trace_id,
+                    timestamp,
+                    reason,
+                    correlation=(("stage", "AUTHORIZATION"),),
+                )
+            )
+
+        return emit
+
+    def controller_denial_sink(self, trace_id: str) -> Callable[[str, datetime, str], None]:
+        return self._runtime_denial_sink(RuntimeEventSource.CONTROLLER, trace_id)
+
+    def execution_denial_sink(self, trace_id: str) -> Callable[[str, datetime, str], None]:
+        return self._runtime_denial_sink(RuntimeEventSource.EXECUTION, trace_id)
+
+    def _runtime_denial_sink(
+        self, source: RuntimeEventSource, trace_id: str
+    ) -> Callable[[str, datetime, str], None]:
+        def emit(task_id: str, timestamp: datetime, reason: str) -> None:
+            self.record(self._denial(source, task_id, trace_id, timestamp, reason))
+
+        return emit
+
+    @staticmethod
+    def _denial(
+        source: RuntimeEventSource,
+        task_id: str,
+        trace_id: str,
+        timestamp: datetime,
+        reason: str,
+        *,
+        invocation_id: str | None = None,
+        agent_role: str | None = None,
+        correlation: tuple[tuple[str, str], ...] = (),
+    ) -> RuntimeEvent:
+        return RuntimeEvent(
+            event_id=f"denial:{uuid4().hex}",
+            sequence=0,
+            timestamp=timestamp,
+            event_type=RuntimeEventType.DENIED,
+            source=source,
+            task_id=task_id,
+            trace_id=trace_id,
+            summary=reason,
+            invocation_id=invocation_id,
+            agent_role=agent_role,
+            correlation=correlation,
+        )

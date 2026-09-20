@@ -19,10 +19,22 @@ _KEYS = (
     "provider_payload",
     "private_key",
 )
-_SENSITIVE_PATTERN = re.compile(
-    r"(?i)(authorization|bearer|credential|password|secret|token|api[_-]?key|"
-    r"prompt|provider[_-]?payload|private[_-]?key)"
+_SAFE_CORRELATION_KEYS = frozenset(
+    {
+        "attempt",
+        "execution_id",
+        "invocation_id",
+        "plan_id",
+        "session_id",
+        "source_sequence",
+        "stage",
+        "step_id",
+        "task_id",
+        "trace_id",
+        "workflow_session_id",
+    }
 )
+_SAFE_VALUE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$")
 
 
 def sensitive_key(value: str) -> bool:
@@ -33,7 +45,8 @@ def sensitive_key(value: str) -> bool:
 def redact_text(value: str) -> str:
     if not isinstance(value, str):
         raise ObservabilityValidationError("runtime evidence must be text")
-    return "[REDACTED]" if _SENSITIVE_PATTERN.search(value) else value
+    # Opaque runtime text cannot prove that it is public. Persist no free-form value.
+    return "[REDACTED]"
 
 
 def redact_pairs(values: tuple[tuple[str, str], ...]) -> tuple[tuple[str, str], ...]:
@@ -42,7 +55,6 @@ def redact_pairs(values: tuple[tuple[str, str], ...]) -> tuple[tuple[str, str], 
         clean_key = key.strip()
         if not clean_key:
             raise ObservabilityValidationError("correlation keys must not be empty")
-        redacted.append(
-            (clean_key, "[REDACTED]" if sensitive_key(clean_key) else redact_text(value))
-        )
+        is_safe = clean_key in _SAFE_CORRELATION_KEYS and _SAFE_VALUE.fullmatch(value) is not None
+        redacted.append((clean_key, value if is_safe else "[REDACTED]"))
     return tuple(redacted)

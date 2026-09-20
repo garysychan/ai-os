@@ -320,41 +320,47 @@ class SQLiteRuntimeStore:
             raise PersistenceIntegrityError(str(error)) from error
         with self._ready_connection() as connection:
             try:
-                with connection:
-                    row = connection.execute(
-                        "SELECT COALESCE(MAX(sequence), 0) FROM runtime_events WHERE trace_id = ?",
-                        (item.trace_id,),
-                    ).fetchone()
-                    expected = int(row[0]) + 1
-                    if item.sequence not in {0, expected}:
-                        raise PersistenceIntegrityError(
-                            f"runtime event sequence must be {expected} for trace {item.trace_id}"
-                        )
-                    item = replace(item, sequence=expected)
-                    payload = dump_runtime_event(item)
-                    connection.execute(
-                        """INSERT INTO runtime_events(
-                             event_id, trace_id, sequence, task_id, execution_id,
-                             invocation_id, event_type, source, timestamp, payload
-                           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                        (
-                            item.event_id,
-                            item.trace_id,
-                            item.sequence,
-                            item.task_id,
-                            item.execution_id,
-                            item.invocation_id,
-                            item.event_type.value,
-                            item.source.value,
-                            item.timestamp.isoformat(),
-                            payload,
-                        ),
+                connection.execute("BEGIN IMMEDIATE")
+                row = connection.execute(
+                    "SELECT COALESCE(MAX(sequence), 0) FROM runtime_events WHERE trace_id = ?",
+                    (item.trace_id,),
+                ).fetchone()
+                expected = int(row[0]) + 1
+                if item.sequence not in {0, expected}:
+                    raise PersistenceIntegrityError(
+                        f"runtime event sequence must be {expected} for trace {item.trace_id}"
                     )
+                item = replace(item, sequence=expected)
+                payload = dump_runtime_event(item)
+                connection.execute(
+                    """INSERT INTO runtime_events(
+                         event_id, trace_id, sequence, task_id, execution_id,
+                         invocation_id, event_type, source, timestamp, payload
+                       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        item.event_id,
+                        item.trace_id,
+                        item.sequence,
+                        item.task_id,
+                        item.execution_id,
+                        item.invocation_id,
+                        item.event_type.value,
+                        item.source.value,
+                        item.timestamp.isoformat(),
+                        payload,
+                    ),
+                )
+                connection.commit()
+            except PersistenceIntegrityError:
+                connection.rollback()
+                raise
             except sqlite3.IntegrityError as error:
+                connection.rollback()
                 raise PersistenceIntegrityError(
                     "runtime event conflicts with append-only evidence"
                 ) from error
             except sqlite3.DatabaseError as error:
+                connection.rollback()
                 raise PersistenceError("runtime event append failed") from error
         return item
 
