@@ -26,6 +26,7 @@ class RuntimeEventSource(StrEnum):
     TOOL = "TOOL"
     WORKFLOW = "WORKFLOW"
     GOVERNANCE = "GOVERNANCE"
+    SCHEDULER = "SCHEDULER"
 
 
 @dataclass(frozen=True)

@@ -28,6 +28,7 @@ class RuntimeComponent(StrEnum):
     WORKFLOW = "WORKFLOW"
     PERSISTENCE = "PERSISTENCE"
     OBSERVABILITY = "OBSERVABILITY"
+    SCHEDULER = "SCHEDULER"
 
 
 class MetricName(StrEnum):

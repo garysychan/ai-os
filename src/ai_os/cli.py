@@ -71,6 +71,14 @@ from ai_os.persistence import (
     SQLiteRuntimeStore,
     StoreConfig,
 )
+from ai_os.scheduler import (
+    JobSpec,
+    ScheduleKind,
+    SchedulerContext,
+    SchedulerError,
+    SchedulerService,
+    SQLiteSchedulerStore,
+)
 from ai_os.tasks import (
     AcceptanceCriterion,
     Priority,
@@ -358,6 +366,42 @@ def _build_parser() -> argparse.ArgumentParser:
     metrics.add_argument("--actor-role", required=True, choices=[role.value for role in AgentRole])
     metrics.add_argument("--window-seconds", type=int, default=3600)
     metrics.add_argument("--json", action="store_true")
+
+    scheduler = commands.add_parser("scheduler", help="Manage governed background jobs.")
+    scheduler_commands = scheduler.add_subparsers(dest="scheduler_command", required=True)
+    scheduler_create = scheduler_commands.add_parser("create")
+    scheduler_create.add_argument("job_id")
+    scheduler_create.add_argument("task_id")
+    scheduler_create.add_argument("workflow")
+    scheduler_create.add_argument("--version", default="1")
+    scheduler_create.add_argument("--run-at", required=True)
+    scheduler_create.add_argument("--interval-seconds", type=int)
+    scheduler_create.add_argument("--max-attempts", type=int, default=1)
+    scheduler_create.add_argument("--retry-backoff-seconds", type=int, default=30)
+    scheduler_create.add_argument("--timeout-seconds", type=int, default=300)
+    scheduler_create.add_argument("--max-elapsed-seconds", type=int, default=86_400)
+    scheduler_create.add_argument("--jitter-seconds", type=int, default=0)
+    scheduler_create.add_argument("--root", type=Path, default=Path.cwd())
+    scheduler_create.add_argument("--database", type=Path, required=True)
+    scheduler_create.add_argument(
+        "--actor-role", required=True, choices=[role.value for role in AgentRole]
+    )
+    scheduler_create.add_argument("--json", action="store_true")
+    for command in ("list", "show", "cancel", "claim"):
+        action = scheduler_commands.add_parser(command)
+        if command in {"show", "cancel"}:
+            action.add_argument("job_id")
+        if command == "claim":
+            action.add_argument("--worker-id", required=True)
+            action.add_argument("--lease-seconds", type=int, default=60)
+            action.add_argument("--dry-run", action="store_true", required=True)
+        action.add_argument("--root", type=Path, default=Path.cwd())
+        action.add_argument("--database", type=Path, required=True)
+        action.add_argument(
+            "--actor-role", required=True, choices=[role.value for role in AgentRole]
+        )
+        action.add_argument("--limit", type=int, default=100)
+        action.add_argument("--json", action="store_true")
 
     return parser
 
@@ -1669,6 +1713,140 @@ def _run_monitoring(args: argparse.Namespace) -> int:
     return 0
 
 
+def _scheduler_payload(record: Any) -> dict[str, Any]:
+    return {
+        "job_id": record.spec.job_id,
+        "task_id": record.spec.task_id,
+        "workflow": f"{record.spec.workflow_name}@{record.spec.workflow_version}",
+        "kind": record.spec.kind.value,
+        "state": record.state.value,
+        "attempts": record.attempts,
+        "next_run_at": record.next_run_at.isoformat(),
+        "lease_owner": record.lease_owner,
+        "lease_expires_at": (
+            record.lease_expires_at.isoformat() if record.lease_expires_at else None
+        ),
+        "last_error": record.last_error,
+    }
+
+
+def _run_scheduler(args: argparse.Namespace) -> int:
+    try:
+        store = SQLiteSchedulerStore(StoreConfig(database=args.database))
+        store.initialize()
+        tasks = parse_tasks((args.root / "TASKS.md").read_text(encoding="utf-8"))
+        approved_tasks = frozenset(
+            task.task_id for task in tasks.values() if task.status in {"IN_PROGRESS", "REVIEW"}
+        )
+        definitions = core_workflows()
+        service = SchedulerService(
+            store,
+            approved_tasks=approved_tasks,
+            registered_workflows=frozenset((item.name, item.version) for item in definitions),
+        )
+        role = AgentRole(args.actor_role)
+        command = args.scheduler_command
+        if command == "create":
+            interval = args.interval_seconds
+            spec = JobSpec(
+                job_id=args.job_id,
+                task_id=args.task_id,
+                workflow_name=args.workflow,
+                workflow_version=args.version,
+                run_at=datetime.fromisoformat(args.run_at),
+                kind=ScheduleKind.INTERVAL if interval is not None else ScheduleKind.ONCE,
+                interval_seconds=interval,
+                max_attempts=args.max_attempts,
+                retry_backoff_seconds=args.retry_backoff_seconds,
+                timeout_seconds=args.timeout_seconds,
+                max_elapsed_seconds=args.max_elapsed_seconds,
+                jitter_seconds=args.jitter_seconds,
+            )
+            record = service.create(spec, context=SchedulerContext(role, Permission.COORDINATE))
+            payload: dict[str, Any] = {
+                "operation": "SCHEDULER CREATE",
+                "status": "PASS",
+                "job": _scheduler_payload(record),
+            }
+        elif command == "list":
+            records = service.list(
+                context=SchedulerContext(role, Permission.READ_CONTROL), limit=args.limit
+            )
+            payload = {
+                "operation": "SCHEDULER LIST",
+                "status": "PASS",
+                "jobs": [_scheduler_payload(record) for record in records],
+            }
+        elif command == "show":
+            record = service.get(
+                args.job_id, context=SchedulerContext(role, Permission.READ_CONTROL)
+            )
+            payload = {
+                "operation": "SCHEDULER SHOW",
+                "status": "PASS",
+                "job": _scheduler_payload(record),
+            }
+        elif command == "cancel":
+            record = service.cancel(
+                args.job_id, context=SchedulerContext(role, Permission.COORDINATE)
+            )
+            payload = {
+                "operation": "SCHEDULER CANCEL",
+                "status": "PASS",
+                "job": _scheduler_payload(record),
+            }
+        else:
+            records = service.list(
+                context=SchedulerContext(role, Permission.READ_CONTROL), limit=args.limit
+            )
+            now = datetime.now(UTC)
+            due = next(
+                (
+                    record
+                    for record in records
+                    if record.state.value in {"SCHEDULED", "RETRY_WAIT"}
+                    and record.next_run_at <= now
+                ),
+                None,
+            )
+            payload = {
+                "operation": "SCHEDULER CLAIM DRY RUN",
+                "status": "PASS",
+                "worker_id": args.worker_id,
+                "would_claim": _scheduler_payload(due) if due else None,
+                "external_side_effects": False,
+            }
+    except (OSError, ValueError, ControlPlaneError, PersistenceError, SchedulerError) as error:
+        payload = {
+            "operation": "SCHEDULER",
+            "status": "FAIL",
+            "error_type": type(error).__name__,
+            "error": str(error),
+        }
+        output = (
+            json.dumps(payload, indent=2)
+            if args.json
+            else f"SCHEDULER\nStatus: FAIL\nError: {error}"
+        )
+        print(output)
+        return 2
+    if args.json:
+        print(json.dumps(payload, indent=2))
+    else:
+        print(payload["operation"])
+        if "job" in payload:
+            job = payload["job"]
+            print(f"{job['job_id']}: {job['state']} ({job['workflow']})")
+        elif "jobs" in payload:
+            for job in payload["jobs"]:
+                print(f"{job['job_id']}: {job['state']} ({job['workflow']})")
+        else:
+            job = payload["would_claim"]
+            print(f"Would claim: {job['job_id'] if job else 'none'}")
+        print("Status: PASS")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the AI OS CLI and return a process exit code."""
     parser = _build_parser()
@@ -1808,6 +1986,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command in {"health", "metrics"}:
         return _run_monitoring(args)
+
+    if args.command == "scheduler":
+        return _run_scheduler(args)
 
     parser.error("Unsupported command")
     return 2
