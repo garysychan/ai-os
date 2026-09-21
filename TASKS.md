@@ -1299,6 +1299,11 @@ Notes:
   commit `fe9fdf08080587cabfc1db7555ed7c8459293b9f`. Post-merge Main Run
   `35605655846` passed; TASK-0019 transitioned from `REVIEW` to `DONE` and CR-2026-016 closed as
   `CLOSED / COMPLETED`.
+- The closeout branch initially exposed a test-only coupling to TASK-0019 remaining dispatchable:
+  Scheduler CLI tests used the authoritative `TASKS.md`, so the correct `DONE` transition caused
+  job creation to fail closed. The closeout fix uses an isolated `REVIEW` Task fixture while
+  preserving production rejection of scheduling against completed Tasks; 263 tests and 7 subtests
+  passed with 85.35% branch coverage.
 
 ## Task Change Rules
 
