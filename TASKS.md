@@ -1105,10 +1105,10 @@ Notes:
   permission, audit and execution boundaries.
 - Dependencies: TASK-0010, TASK-0011 and TASK-0013 through TASK-0017 as listed above.
 - Approval Required: Explicit A2 Human Approval before implementation.
-- Approval Evidence: Not yet provided.
-- CR Status: PROPOSED / NOT AUTHORIZED.
-- No implementation branch, runtime code, migration or external monitoring integration may be
-  created until CR-2026-015 receives explicit approval.
+- Approval Evidence: Repository Owner issued `APPROVE CR-2026-015` on 2026-09-21.
+- CR Status: APPROVED / IMPLEMENTATION AUTHORIZED.
+- Implementation may begin on a dedicated feature branch after this approval record is merged to
+  authoritative `main`; TASK-0018 remains `TODO` until that branch is created.
 
 ## Task Change Rules
 
