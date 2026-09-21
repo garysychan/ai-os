@@ -1172,9 +1172,9 @@ Agent permissions, Workflow budgets, Tool policy, approval gates or the Executio
 
 Acceptance Criteria:
 - [ ] Canonical immutable schedule, job, attempt, lease and result models are explicitly versioned.
-- [ ] One-time, delayed and bounded recurring schedules use timezone-aware timestamps and a
+- [x] One-time, delayed and bounded recurring schedules use timezone-aware timestamps and a
   deterministic clock boundary.
-- [ ] Background jobs reference approved Tasks and registered Workflow definitions; arbitrary
+- [x] Background jobs reference approved Tasks and registered Workflow definitions; arbitrary
   callables, shell commands and provider payloads are not persisted or executed.
 - [ ] The Scheduler dispatches work only through the existing Controller, Agent Runtime, Workflow
   Engine and Execution Engine authority chain.
@@ -1182,7 +1182,7 @@ Acceptance Criteria:
   before every dispatch.
 - [ ] Job state transitions are explicit, deterministic and fail closed for unknown, stale or
   illegal transitions.
-- [ ] Persistent jobs, attempts and leases use the governed SQLite Runtime Store with forward-only
+- [x] Persistent jobs, attempts and leases use the governed SQLite Runtime Store with forward-only
   migration, bounded retention and transactional writes.
 - [ ] Atomic claiming, renewable leases and fencing prevent duplicate concurrent execution after
   worker contention, crash or restart.
@@ -1190,26 +1190,26 @@ Acceptance Criteria:
   enforced before dispatch.
 - [ ] Cancellation, timeout and shutdown are cooperative, bounded and recorded without silently
   converting an uncertain outcome into success.
-- [ ] Recurring schedules prevent unbounded catch-up, clock-skew loops and duplicate fire times.
+- [x] Recurring schedules prevent unbounded catch-up, clock-skew loops and duplicate fire times.
 - [ ] Worker concurrency, queue capacity, polling interval and batch size have explicit limits.
-- [ ] Job payloads, errors and inspection output cannot expose secrets, prompts, filesystem paths,
+- [x] Job payloads, errors and inspection output cannot expose secrets, prompts, filesystem paths,
   provider payloads or arbitrary private values.
-- [ ] Every scheduling, claim, dispatch, retry, cancellation, timeout and terminal outcome emits a
+- [x] Every scheduling, claim, dispatch, retry, cancellation, timeout and terminal outcome emits a
   canonical redacted Runtime Observability event.
-- [ ] Runtime Metrics and Health Monitoring receives bounded scheduler and worker signals without
+- [x] Runtime Metrics and Health Monitoring receives bounded scheduler and worker signals without
   acquiring scheduling or execution authority.
-- [ ] Query and management operations require canonical Agent identity and the existing minimum
+- [x] Query and management operations require canonical Agent identity and the existing minimum
   permissions; unauthorized operations fail before repository mutation.
-- [ ] CLI supports bounded schedule/job create, list, describe, cancel and worker dry-run or
+- [x] CLI supports bounded schedule/job create, list, describe, cancel and worker dry-run or
   inspection operations in human-readable and JSON formats.
-- [ ] Recovery tests cover restart, expired leases, duplicate claims, interrupted attempts and
+- [x] Recovery tests cover restart, expired leases, duplicate claims, interrupted attempts and
   persistence reopen without replaying completed work.
-- [ ] Existing Controller, Execution, Workflow, Tool, Adapter, persistence, observability and
+- [x] Existing Controller, Execution, Workflow, Tool, Adapter, persistence, observability and
   monitoring public APIs remain compatible.
 - [ ] Positive, negative, authorization, concurrency, recovery, timeout and redaction tests exist.
 - [ ] Tests pass on Python 3.11 and Python 3.12.
-- [ ] Coverage remains at or above the configured 80% threshold.
-- [ ] Control Plane Consistency Check has no new blocking finding.
+- [x] Coverage remains at or above the configured 80% threshold.
+- [x] Control Plane Consistency Check has no new blocking finding.
 - [ ] Whole-branch Reviewer result is APPROVE.
 - [ ] Protected Pull Request governance passes before merge.
 
@@ -1255,6 +1255,17 @@ Notes:
 - Implementation started on `feature/runtime-scheduler-background-jobs` from authoritative `main`
   commit `a4b18659999d152b83126c8ebd7d98701545e605`; TASK-0019 transitioned from `TODO` to
   `IN_PROGRESS`.
+- Runtime Scheduler Core now provides versioned job/dispatch models, SQLite schema migration 3,
+  atomic leases with fencing, bounded retry and recurring scheduling, cancellation/timeout,
+  canonical audit evidence, health signals and bounded CLI inspection.
+- Initial Core validation passed 240 tests and 7 subtests; targeted Scheduler, CLI, persistence,
+  monitoring and observability validation passed 71 tests. Ruff and strict Mypy passed. Controller
+  dispatch integration, complete policy revalidation and explicit transition/budget enforcement
+  remain open before Tester Validation can complete.
+- Core Tester Validation passed 241 tests and 7 subtests with 85.11% branch coverage. Python
+  compile, Ruff, changed-file formatting, strict Mypy, Task Schema and Control Plane checks passed;
+  Control Plane remains `WARNING` only for pre-existing findings. Required GitHub Python 3.11 and
+  Python 3.12 checks remain pending.
 
 ## Task Change Rules
 

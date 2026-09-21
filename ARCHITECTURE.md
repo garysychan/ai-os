@@ -270,3 +270,16 @@ Components publish only canonical health states through narrow injected sinks. O
 under a bounded timeout; exceptions and timeouts are converted to sanitized `UNAVAILABLE`
 evidence. Aggregate metrics include bounded event counts, lifecycle duration, failure rate and
 query-capacity utilization derived from the authoritative audit stream.
+
+## 16. Runtime Scheduler and Background Jobs
+
+`src/ai_os/scheduler/` defines versioned, immutable job and dispatch models plus a transactional
+SQLite repository over the governed Persistent Runtime Store. Scheduler data contains only Task and
+registered Workflow references, bounded timing/retry policy and sanitized state; it never persists
+arbitrary callables, shell commands, prompts or provider payloads.
+
+Atomic claims use expiring leases and fencing tokens. A worker receives a `DispatchRequest`, not
+execution authority: Controller, Agent, Workflow, Execution, Tool and approval policy must still be
+revalidated by the dispatch integration before work can run. Scheduler events append canonical,
+redacted Runtime Observability evidence and publish only advisory health signals. Scheduler or
+monitoring failure cannot authorize, approve or silently complete execution.

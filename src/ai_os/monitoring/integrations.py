@@ -85,6 +85,11 @@ def observability_health_sink(service: MonitoringService) -> Callable[[bool], No
     return lambda available: signal(HealthStatus.HEALTHY if available else HealthStatus.UNAVAILABLE)
 
 
+def scheduler_health_sink(service: MonitoringService) -> Callable[[bool], None]:
+    signal = service.signal_sink(RuntimeComponent.SCHEDULER)
+    return lambda available: signal(HealthStatus.HEALTHY if available else HealthStatus.DEGRADED)
+
+
 def _outcome_health(status: str | None) -> HealthStatus:
     if status in {None, "COMPLETED", "SUCCESS"}:
         return HealthStatus.HEALTHY
