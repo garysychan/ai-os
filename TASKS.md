@@ -1157,6 +1157,101 @@ Notes:
   `REVIEW` to `DONE` and CR-2026-015 is `CLOSED / COMPLETED`.
 - CR Final Status: CLOSED / COMPLETED.
 
+## TASK-0019 — Install Runtime Scheduler and Background Jobs
+
+Priority: P1
+Agent: Controller / Planner / Developer / Tester / Reviewer / Fixer
+Status: TODO
+Dependencies: TASK-0005, TASK-0006, TASK-0010, TASK-0011, TASK-0013, TASK-0014,
+TASK-0015, TASK-0017, TASK-0018
+
+Description:
+Install a governed Runtime Scheduler and Background Jobs layer that can persist, claim, execute,
+retry, cancel and inspect bounded jobs without bypassing Task dependencies, Controller authority,
+Agent permissions, Workflow budgets, Tool policy, approval gates or the Execution Engine.
+
+Acceptance Criteria:
+- [ ] Canonical immutable schedule, job, attempt, lease and result models are explicitly versioned.
+- [ ] One-time, delayed and bounded recurring schedules use timezone-aware timestamps and a
+  deterministic clock boundary.
+- [ ] Background jobs reference approved Tasks and registered Workflow definitions; arbitrary
+  callables, shell commands and provider payloads are not persisted or executed.
+- [ ] The Scheduler dispatches work only through the existing Controller, Agent Runtime, Workflow
+  Engine and Execution Engine authority chain.
+- [ ] Task dependency, assignment, permission and approval gates are revalidated immediately
+  before every dispatch.
+- [ ] Job state transitions are explicit, deterministic and fail closed for unknown, stale or
+  illegal transitions.
+- [ ] Persistent jobs, attempts and leases use the governed SQLite Runtime Store with forward-only
+  migration, bounded retention and transactional writes.
+- [ ] Atomic claiming, renewable leases and fencing prevent duplicate concurrent execution after
+  worker contention, crash or restart.
+- [ ] Retry count, exponential backoff, jitter, deadline and maximum elapsed time are bounded and
+  enforced before dispatch.
+- [ ] Cancellation, timeout and shutdown are cooperative, bounded and recorded without silently
+  converting an uncertain outcome into success.
+- [ ] Recurring schedules prevent unbounded catch-up, clock-skew loops and duplicate fire times.
+- [ ] Worker concurrency, queue capacity, polling interval and batch size have explicit limits.
+- [ ] Job payloads, errors and inspection output cannot expose secrets, prompts, filesystem paths,
+  provider payloads or arbitrary private values.
+- [ ] Every scheduling, claim, dispatch, retry, cancellation, timeout and terminal outcome emits a
+  canonical redacted Runtime Observability event.
+- [ ] Runtime Metrics and Health Monitoring receives bounded scheduler and worker signals without
+  acquiring scheduling or execution authority.
+- [ ] Query and management operations require canonical Agent identity and the existing minimum
+  permissions; unauthorized operations fail before repository mutation.
+- [ ] CLI supports bounded schedule/job create, list, describe, cancel and worker dry-run or
+  inspection operations in human-readable and JSON formats.
+- [ ] Recovery tests cover restart, expired leases, duplicate claims, interrupted attempts and
+  persistence reopen without replaying completed work.
+- [ ] Existing Controller, Execution, Workflow, Tool, Adapter, persistence, observability and
+  monitoring public APIs remain compatible.
+- [ ] Positive, negative, authorization, concurrency, recovery, timeout and redaction tests exist.
+- [ ] Tests pass on Python 3.11 and Python 3.12.
+- [ ] Coverage remains at or above the configured 80% threshold.
+- [ ] Control Plane Consistency Check has no new blocking finding.
+- [ ] Whole-branch Reviewer result is APPROVE.
+- [ ] Protected Pull Request governance passes before merge.
+
+Proposed Artifacts:
+- CR-2026-016
+- Proposed `feature/runtime-scheduler-background-jobs`
+- Proposed `src/ai_os/scheduler/`
+- Proposed `tests/scheduler/`
+- Proposed governed SQLite scheduler migration
+- Proposed CLI integration for schedule, job and worker inspection
+
+Risks:
+- Duplicate claims or stale workers could execute the same external side effect more than once.
+- Scheduler dispatch could become a second Controller or bypass Task and approval gates.
+- Unbounded retries, recurrence or catch-up could cause runaway execution and cost.
+- Clock skew, process crashes and expired leases could corrupt job state or lose work.
+- Stored payloads and failure details could expose private or provider data.
+- Background workers could weaken cancellation, shutdown and audit guarantees.
+
+Notes:
+- Change ID: CR-2026-016.
+- Requester: Repository Owner.
+- Date: 2026-09-21.
+- Target Document: `ARCHITECTURE.md`, `WORKFLOW.md`, `TASKS.md` and executable runtime modules.
+- Change Type: ARCHITECTURE / WORKFLOW / SECURITY / PERSISTENCE.
+- Classification: MAJOR runtime capability with concurrency, persistence and external side-effect
+  risk.
+- Reason: Add durable scheduled and background execution above the installed Controller,
+  Workflow, Execution, persistence, observability and monitoring layers.
+- Current State: AI OS can execute governed workflows and inspect runtime health, but it cannot
+  durably schedule future work, coordinate background workers or recover leased jobs.
+- Proposed Change: Add a bounded persistent scheduler and worker boundary that dispatches only
+  through existing governance and execution authority.
+- Affected Documents: `ARCHITECTURE.md`, `WORKFLOW.md`, `TASKS.md`.
+- Affected Agents: Controller, Planner, Developer, Tester, Reviewer and Fixer.
+- Dependencies: TASK-0005, TASK-0006, TASK-0010, TASK-0011, TASK-0013, TASK-0014, TASK-0015,
+  TASK-0017 and TASK-0018.
+- Approval Required: Explicit A2 Human Approval before implementation.
+- CR Status: PROPOSED / APPROVAL REQUIRED / IMPLEMENTATION NOT AUTHORIZED.
+- Implementation must not begin and TASK-0019 must remain `TODO` until approval is recorded on
+  authoritative `main`.
+
 ## Task Change Rules
 
 1. Do not silently delete completed tasks.
