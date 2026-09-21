@@ -1596,6 +1596,8 @@ def _human_runtime_events(operation: str, events: tuple[RuntimeEvent, ...]) -> s
 
 
 def _run_monitoring(args: argparse.Namespace) -> int:
+    payload: dict[str, Any]
+
     try:
         store = SQLiteRuntimeStore(StoreConfig(database=args.database))
         service = MonitoringService(store)
@@ -1619,9 +1621,7 @@ def _run_monitoring(args: argparse.Namespace) -> int:
                 ],
             }
         else:
-            points = service.metrics(
-                context=context, window=timedelta(seconds=args.window_seconds)
-            )
+            points = service.metrics(context=context, window=timedelta(seconds=args.window_seconds))
             payload = {
                 "operation": "RUNTIME METRICS",
                 "status": "PASS",
@@ -1662,8 +1662,7 @@ def _run_monitoring(args: argparse.Namespace) -> int:
     else:
         lines = ["RUNTIME METRICS"]
         lines.extend(
-            f"{point['name']}: {point['value']} {point['unit']}"
-            for point in payload["metrics"]
+            f"{point['name']}: {point['value']} {point['unit']}" for point in payload["metrics"]
         )
         lines.append("Status: PASS")
         print("\n".join(lines))

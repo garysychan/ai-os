@@ -7,6 +7,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from multiprocessing import get_context
 from queue import Empty
+from typing import Protocol
 
 from ai_os.observability import RuntimeEvent, RuntimeEventFilter, RuntimeEventType
 
@@ -14,6 +15,7 @@ from .errors import MonitoringValidationError
 from .models import (
     HealthCheck,
     HealthDetail,
+    HealthProbe,
     HealthSnapshot,
     HealthStatus,
     MetricName,
@@ -25,15 +27,29 @@ from .models import (
 from .validation import authorize_monitoring_query, validate_metrics
 
 
+class MonitoringEventRepository(Protocol):
+    """Minimal read-only event contract required by monitoring."""
+
+    def list_runtime_events(
+        self, *, filters: RuntimeEventFilter | None = None, limit: int = 100
+    ) -> tuple[RuntimeEvent, ...]: ...
+
+
+class ProbeResultQueue(Protocol):
+    """Narrow queue contract used by an isolated health probe worker."""
+
+    def put(self, item: tuple[str, str | None]) -> None: ...
+
+
 class MonitoringService:
     """Derive bounded monitoring views without mutating runtime state."""
 
     def __init__(
         self,
-        repository: object,
+        repository: MonitoringEventRepository,
         *,
         max_limit: int = 1000,
-        probes: tuple[object, ...] = (),
+        probes: tuple[HealthProbe, ...] = (),
         probe_timeout_seconds: float = 1.0,
     ) -> None:
         if max_limit < 1 or max_limit > 10_000:
@@ -218,10 +234,9 @@ class MonitoringService:
         return tuple(checks)
 
     def _events(self) -> tuple[RuntimeEvent, ...]:
-        list_events = getattr(self.repository, "list_runtime_events", None)
-        if list_events is None:
-            raise MonitoringValidationError("repository does not expose runtime events")
-        return list_events(filters=RuntimeEventFilter(), limit=self.max_limit)
+        return self.repository.list_runtime_events(
+            filters=RuntimeEventFilter(), limit=self.max_limit
+        )
 
 
 def _health_severity(status: HealthStatus) -> int:
@@ -234,7 +249,7 @@ def _health_severity(status: HealthStatus) -> int:
     }[status]
 
 
-def _probe_worker(probe: object, queue: object) -> None:
+def _probe_worker(probe: HealthProbe, queue: ProbeResultQueue) -> None:
     try:
         status = probe.check()
         queue.put(("status", status.value if isinstance(status, HealthStatus) else "INVALID"))
