@@ -12,6 +12,7 @@ from ai_os.persistence import SQLiteRuntimeStore, StoreConfig
 from .codec import dump_job, load_job
 from .errors import SchedulerConflictError, SchedulerNotFoundError
 from .models import TERMINAL_JOB_STATES, JobRecord, JobSpec, JobState
+from .state_machine import require_transition
 
 
 class SQLiteSchedulerStore:
@@ -100,6 +101,7 @@ class SQLiteSchedulerStore:
                 lease_expires_at=expires,
                 updated_at=now,
             )
+            require_transition(current.state, claimed.state)
             updated = connection.execute(
                 """UPDATE scheduler_jobs SET state=?, lease_owner=?, lease_token=?,
                    lease_expires_at=?, updated_at=?, payload=?
@@ -123,6 +125,24 @@ class SQLiteSchedulerStore:
                 raise SchedulerConflictError("job claim lost to a concurrent worker")
             connection.commit()
             return claimed
+
+    def renew(
+        self, job_id: str, *, lease_token: str, now: datetime, lease_seconds: int
+    ) -> JobRecord:
+        current = self.get(job_id)
+        if (
+            current.state not in {JobState.LEASED, JobState.RUNNING}
+            or current.lease_token != lease_token
+            or current.lease_expires_at is None
+            or current.lease_expires_at <= now
+        ):
+            raise SchedulerConflictError("only the current unexpired lease can be renewed")
+        renewed = replace(
+            current,
+            lease_expires_at=now + timedelta(seconds=lease_seconds),
+            updated_at=now,
+        )
+        return self.save_leased(renewed, lease_token=lease_token)
 
     def save_leased(self, record: JobRecord, *, lease_token: str) -> JobRecord:
         with self._connect() as connection:
@@ -150,6 +170,7 @@ class SQLiteSchedulerStore:
         current = self.get(job_id)
         if current.state in TERMINAL_JOB_STATES:
             raise SchedulerConflictError("terminal job cannot be cancelled")
+        require_transition(current.state, JobState.CANCELLED)
         cancelled = replace(
             current,
             state=JobState.CANCELLED,

@@ -44,6 +44,10 @@ def validate_spec(spec: JobSpec) -> JobSpec:
         raise SchedulerValidationError("retry backoff must be within one day")
     if not 1 <= spec.timeout_seconds <= 86_400:
         raise SchedulerValidationError("timeout must be within one day")
+    if not spec.timeout_seconds <= spec.max_elapsed_seconds <= 604_800:
+        raise SchedulerValidationError("maximum elapsed time must be within timeout and seven days")
+    if not 0 <= spec.jitter_seconds <= min(spec.retry_backoff_seconds, 3_600):
+        raise SchedulerValidationError("retry jitter exceeds its configured bound")
     if timedelta(seconds=spec.retry_backoff_seconds * 2 ** (spec.max_attempts - 1)) > timedelta(
         days=7
     ):

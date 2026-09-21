@@ -48,6 +48,8 @@ class JobSpec:
     max_attempts: int = 1
     retry_backoff_seconds: int = 30
     timeout_seconds: int = 300
+    max_elapsed_seconds: int = 86_400
+    jitter_seconds: int = 0
     schema_version: int = 1
 
 
@@ -75,4 +77,40 @@ class DispatchRequest:
     attempt: int
     lease_token: str
     deadline: datetime
+    schema_version: int = 1
+
+
+@dataclass(frozen=True)
+class JobLease:
+    job_id: str
+    worker_id: str
+    token: str
+    expires_at: datetime
+    schema_version: int = 1
+
+
+@dataclass(frozen=True)
+class JobAttempt:
+    job_id: str
+    number: int
+    started_at: datetime
+    deadline: datetime
+    lease: JobLease
+    schema_version: int = 1
+
+
+@dataclass(frozen=True)
+class JobResult:
+    job_id: str
+    attempt: int
+    state: JobState
+    finished_at: datetime
+    schema_version: int = 1
+
+
+@dataclass(frozen=True)
+class WorkerLimits:
+    max_concurrency: int = 1
+    max_batch: int = 10
+    poll_seconds: float = 1.0
     schema_version: int = 1

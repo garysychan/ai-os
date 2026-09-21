@@ -18,6 +18,7 @@ from .models import (
     ScheduleKind,
     SchedulerContext,
 )
+from .state_machine import require_transition
 from .store import SQLiteSchedulerStore
 from .validation import authorize, validate_spec
 
@@ -101,6 +102,7 @@ class SchedulerService:
             attempts=record.attempts + 1,
             updated_at=instant,
         )
+        require_transition(record.state, running.state)
         self.store.save_leased(running, lease_token=record.lease_token)
         self._emit("STARTED", running)
         return DispatchRequest(
@@ -111,6 +113,24 @@ class SchedulerService:
             attempt=running.attempts,
             lease_token=record.lease_token,
             deadline=instant + timedelta(seconds=running.spec.timeout_seconds),
+        )
+
+    def renew(
+        self,
+        request: DispatchRequest,
+        *,
+        context: SchedulerContext,
+        now: datetime | None = None,
+        lease_seconds: int = 60,
+    ) -> JobRecord:
+        authorize(context, Permission.COORDINATE)
+        if not 5 <= lease_seconds <= 300:
+            raise SchedulerValidationError("lease duration must be within 5..300 seconds")
+        return self.store.renew(
+            request.job_id,
+            lease_token=request.lease_token,
+            now=now or datetime.now(UTC),
+            lease_seconds=lease_seconds,
         )
 
     def complete(
@@ -138,10 +158,22 @@ class SchedulerService:
             next_run = current.next_run_at
             error = None
         elif current.attempts < current.spec.max_attempts:
-            state = JobState.RETRY_WAIT
             backoff = current.spec.retry_backoff_seconds * 2 ** (current.attempts - 1)
-            next_run = instant + timedelta(seconds=backoff)
-            error = "FAILED"
+            jitter = _deterministic_jitter(
+                current.spec.job_id, current.attempts, current.spec.jitter_seconds
+            )
+            candidate = instant + timedelta(seconds=backoff + jitter)
+            elapsed_deadline = current.created_at + timedelta(
+                seconds=current.spec.max_elapsed_seconds
+            )
+            if candidate > elapsed_deadline:
+                state = JobState.FAILED
+                next_run = current.next_run_at
+                error = "ELAPSED_BUDGET_EXHAUSTED"
+            else:
+                state = JobState.RETRY_WAIT
+                next_run = candidate
+                error = "FAILED"
         else:
             state = JobState.FAILED
             next_run = current.next_run_at
@@ -156,6 +188,7 @@ class SchedulerService:
             lease_expires_at=None,
             last_error=error,
         )
+        require_transition(current.state, updated.state)
         self.store.save_leased(updated, lease_token=request.lease_token)
         self._emit(state.value, updated)
         return updated
@@ -164,3 +197,10 @@ class SchedulerService:
         if self.evidence_sink is not None:
             with suppress(Exception):
                 self.evidence_sink(event, record)
+
+
+def _deterministic_jitter(job_id: str, attempt: int, maximum: int) -> int:
+    if maximum == 0:
+        return 0
+    seed = sum(job_id.encode("utf-8")) + attempt * 31
+    return seed % (maximum + 1)
