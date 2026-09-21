@@ -886,7 +886,7 @@ Notes:
 
 Priority: P1
 Agent: Controller / Planner / Developer / Tester / Reviewer / Fixer
-Status: REVIEW
+Status: DONE
 Dependencies: TASK-0005, TASK-0006, TASK-0010, TASK-0011, TASK-0012, TASK-0013, TASK-0014, TASK-0015, TASK-0016
 
 Description:
@@ -922,7 +922,7 @@ Acceptance Criteria:
 - [x] Coverage remains at or above the configured 80% threshold.
 - [x] Control Plane Consistency Check has no new blocking finding.
 - [x] Whole-branch Reviewer result is APPROVE.
-- [ ] Protected Pull Request governance passes before merge.
+- [x] Protected Pull Request governance passes before merge.
 
 Proposed Artifacts:
 - CR-2026-014
@@ -1022,6 +1022,11 @@ Notes:
   `b2c47641ba994f63e7297ad38b490109b39eb8f6`. With Final Reviewer `APPROVE` and no open
   implementation blocker, TASK-0017 transitioned from `IN_PROGRESS` to `REVIEW` and is Ready for
   Review. Protected Pull Request governance remains required before merge.
+- PR #47 was squash merged through protected main governance as
+  `fd5f5b9435362329aa080f5c35c7ebf10f5143ae`.
+- Post-merge Main Run `35516129407` passed the required Python 3.11 and Python 3.12 checks.
+- All acceptance criteria and governance gates passed; TASK-0017 transitioned from `REVIEW` to
+  `DONE` and CR-2026-014 is `CLOSED / COMPLETED`.
 
 ## Task Change Rules
 
