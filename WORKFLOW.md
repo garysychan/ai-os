@@ -319,3 +319,16 @@ the caller's `read_control` authority, and produces an immutable metric set or h
 Metrics and health are advisory evidence only: they cannot transition Tasks, dispatch Agents,
 approve work or alter an execution result. Invalid labels, excessive windows, stale evidence and
 probe failures are surfaced explicitly and never converted into authorization.
+
+## 14. Runtime Scheduler Lifecycle
+
+A canonical job is created only for an approved Task reference and registered Workflow version.
+When due, one worker atomically claims the job under a bounded lease and receives a fenced dispatch
+request. The request must pass the existing dependency, assignment, permission, approval, deadline
+and Workflow budget gates immediately before Controller dispatch; Scheduler state alone never
+authorizes execution.
+
+Completion requires the current fencing token. Failures may enter bounded retry wait with
+exponential backoff; one-time success is terminal, while recurring success schedules exactly one
+future fire time from completion to prevent unbounded catch-up. Cancellation, timeout, stale lease
+recovery and every terminal outcome remain explicit, persisted and auditable.
