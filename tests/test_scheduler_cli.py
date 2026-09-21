@@ -1,8 +1,28 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from ai_os.cli import main
+
+
+def active_task_root(tmp_path: Path) -> str:
+    root = tmp_path / "control-plane"
+    root.mkdir()
+    (root / "TASKS.md").write_text(
+        """## TASK-0019 — Scheduler CLI fixture
+
+Priority: P1
+Agent: Controller / Tester
+Status: REVIEW
+Dependencies: None
+
+Acceptance Criteria:
+- [x] Fixture is dispatchable.
+""",
+        encoding="utf-8",
+    )
+    return str(root)
 
 
 def create_args(database: str, root: str) -> list[str]:
@@ -26,7 +46,7 @@ def create_args(database: str, root: str) -> list[str]:
 
 def test_scheduler_cli_create_list_show_and_cancel(tmp_path, capsys) -> None:
     database = str(tmp_path / "runtime.db")
-    root = "."
+    root = active_task_root(tmp_path)
     assert main(create_args(database, root)) == 0
     created = json.loads(capsys.readouterr().out)
     assert created["job"]["state"] == "SCHEDULED"
@@ -72,7 +92,7 @@ def test_scheduler_cli_create_list_show_and_cancel(tmp_path, capsys) -> None:
 
 
 def test_scheduler_cli_rejects_unauthorized_create(tmp_path, capsys) -> None:
-    args = create_args(str(tmp_path / "runtime.db"), ".")
+    args = create_args(str(tmp_path / "runtime.db"), active_task_root(tmp_path))
     args[args.index("Controller")] = "Reviewer"
 
     assert main(args) == 2
@@ -82,7 +102,8 @@ def test_scheduler_cli_rejects_unauthorized_create(tmp_path, capsys) -> None:
 
 def test_scheduler_claim_dry_run_does_not_mutate(tmp_path, capsys) -> None:
     database = str(tmp_path / "runtime.db")
-    assert main(create_args(database, ".")) == 0
+    root = active_task_root(tmp_path)
+    assert main(create_args(database, root)) == 0
     capsys.readouterr()
 
     assert (
@@ -96,7 +117,7 @@ def test_scheduler_claim_dry_run_does_not_mutate(tmp_path, capsys) -> None:
                 "--database",
                 database,
                 "--root",
-                ".",
+                root,
                 "--actor-role",
                 "Controller",
                 "--json",
@@ -116,7 +137,7 @@ def test_scheduler_claim_dry_run_does_not_mutate(tmp_path, capsys) -> None:
                 "--database",
                 database,
                 "--root",
-                ".",
+                root,
                 "--actor-role",
                 "Reviewer",
                 "--json",
