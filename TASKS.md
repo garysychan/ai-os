@@ -1161,7 +1161,7 @@ Notes:
 
 Priority: P1
 Agent: Controller / Planner / Developer / Tester / Reviewer / Fixer
-Status: TODO
+Status: IN_PROGRESS
 Dependencies: TASK-0005, TASK-0006, TASK-0010, TASK-0011, TASK-0013, TASK-0014,
 TASK-0015, TASK-0017, TASK-0018
 
@@ -1252,6 +1252,9 @@ Notes:
 - CR Status: APPROVED / IMPLEMENTATION AUTHORIZED.
 - Implementation may begin on a dedicated feature branch only after this approval record is merged
   to authoritative `main`; TASK-0019 remains `TODO` until that branch is created.
+- Implementation started on `feature/runtime-scheduler-background-jobs` from authoritative `main`
+  commit `a4b18659999d152b83126c8ebd7d98701545e605`; TASK-0019 transitioned from `TODO` to
+  `IN_PROGRESS`.
 
 ## Task Change Rules
 
