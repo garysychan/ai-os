@@ -60,12 +60,12 @@ class SchedulerWorker:
 
     def run_batch(self, *, clock: Callable[[], datetime] | None = None) -> int:
         now = clock or (lambda: datetime.now(UTC))
-        requests: list[DispatchRequest] = []
+        work: list[tuple[DispatchRequest, Event, Event, Thread]] = []
         capacity = min(
             self.limits.max_batch,
             self.limits.max_concurrency + self.limits.max_queue,
         )
-        while len(requests) < capacity and not self.stop_event.is_set():
+        while len(work) < capacity and not self.stop_event.is_set():
             request = self.service.claim(
                 worker_id=self.worker_id,
                 context=self.context,
@@ -74,23 +74,36 @@ class SchedulerWorker:
             )
             if request is None:
                 break
-            requests.append(request)
-        if not requests:
+            work.append((request, *self._start_heartbeat(request, now)))
+        if not work:
             return 0
         if self.stop_event.is_set():
-            for request in requests:
+            for request, heartbeat_stop, _, heartbeat in work:
+                heartbeat_stop.set()
+                heartbeat.join()
                 self.service.release(request, context=self.context, now=now())
             return 0
         with ThreadPoolExecutor(max_workers=self.limits.max_concurrency) as executor:
-            futures = [executor.submit(self._dispatch_one, request, now) for request in requests]
+            futures = [
+                executor.submit(
+                    self._dispatch_one,
+                    request,
+                    now,
+                    heartbeat_stop,
+                    lease_lost,
+                    heartbeat,
+                )
+                for request, heartbeat_stop, lease_lost, heartbeat in work
+            ]
             for future in futures:
                 future.result()
         return len(futures)
 
-    def _dispatch_one(self, request: DispatchRequest, clock: Callable[[], datetime]) -> None:
-        if self.stop_event.is_set():
-            self.service.release(request, context=self.context, now=clock())
-            return
+    def _start_heartbeat(
+        self,
+        request: DispatchRequest,
+        clock: Callable[[], datetime],
+    ) -> tuple[Event, Event, Thread]:
         heartbeat_stop = Event()
         lease_lost = Event()
         heartbeat = Thread(
@@ -99,6 +112,25 @@ class SchedulerWorker:
             daemon=True,
         )
         heartbeat.start()
+        return heartbeat_stop, lease_lost, heartbeat
+
+    def _dispatch_one(
+        self,
+        request: DispatchRequest,
+        clock: Callable[[], datetime],
+        heartbeat_stop: Event,
+        lease_lost: Event,
+        heartbeat: Thread,
+    ) -> None:
+        if lease_lost.is_set():
+            heartbeat_stop.set()
+            heartbeat.join()
+            return
+        if self.stop_event.is_set():
+            heartbeat_stop.set()
+            heartbeat.join()
+            self.service.release(request, context=self.context, now=clock())
+            return
         try:
             succeeded = self.gateway.dispatch(
                 request,

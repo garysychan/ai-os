@@ -11,6 +11,7 @@ from types import SimpleNamespace
 import pytest
 
 from ai_os.agents import AgentRole, Permission
+from ai_os.observability import RuntimeEventType
 from ai_os.persistence import StoreConfig
 from ai_os.scheduler import (
     DispatchPolicySnapshot,
@@ -26,6 +27,7 @@ from ai_os.scheduler import (
     WorkerLimits,
     WorkflowDispatchGateway,
     require_transition,
+    scheduler_runtime_event_sink,
 )
 from ai_os.tasks import AcceptanceCriterion, Priority, Task, TaskStatus
 from ai_os.workflows import WorkflowStatus
@@ -173,6 +175,81 @@ def test_worker_renews_lease_during_long_dispatch(tmp_path: Path, monkeypatch) -
     assert scheduler.store.get("job-hardening").state is JobState.SUCCEEDED
 
 
+def test_queued_job_renews_before_executor_slot_is_available(tmp_path: Path, monkeypatch) -> None:
+    scheduler = build(tmp_path)
+    scheduler.create(job("job-active"), context=CONTEXT, now=NOW)
+    scheduler.create(job("job-queued"), context=CONTEXT, now=NOW)
+    renewed: list[str] = []
+    original = scheduler.renew
+
+    def record_renewal(request, **kwargs):
+        renewed.append(request.job_id)
+        return original(request, **kwargs)
+
+    monkeypatch.setattr(scheduler, "renew", record_renewal)
+
+    class BlockingGateway(RecordingGateway):
+        def dispatch(self, request, *, clock, cancelled) -> bool:
+            if request.job_id == "job-active":
+                sleep(0.25)
+            return super().dispatch(request, clock=clock, cancelled=cancelled)
+
+    worker = SchedulerWorker(
+        scheduler,
+        BlockingGateway(),
+        worker_id="worker-queued-renewal",
+        limits=WorkerLimits(
+            max_concurrency=1,
+            max_queue=1,
+            max_batch=2,
+            lease_seconds=5,
+            renewal_seconds=0.1,
+        ),
+    )
+
+    assert worker.run_batch(clock=lambda: NOW) == 2
+    assert "job-queued" in renewed
+    assert scheduler.store.get("job-queued").state is JobState.SUCCEEDED
+
+
+def test_queued_job_with_lost_lease_is_not_dispatched(tmp_path: Path, monkeypatch) -> None:
+    scheduler = build(tmp_path)
+    scheduler.create(job("job-active"), context=CONTEXT, now=NOW)
+    scheduler.create(job("job-stale-queued"), context=CONTEXT, now=NOW)
+    original = scheduler.renew
+
+    def renew_or_lose(request, **kwargs):
+        if request.job_id == "job-stale-queued":
+            raise SchedulerConflictError("queued lease lost")
+        return original(request, **kwargs)
+
+    monkeypatch.setattr(scheduler, "renew", renew_or_lose)
+
+    class BlockingGateway(RecordingGateway):
+        def dispatch(self, request, *, clock, cancelled) -> bool:
+            if request.job_id == "job-active":
+                sleep(0.25)
+            return super().dispatch(request, clock=clock, cancelled=cancelled)
+
+    gateway = BlockingGateway()
+    worker = SchedulerWorker(
+        scheduler,
+        gateway,
+        worker_id="worker-stale-queue",
+        limits=WorkerLimits(
+            max_concurrency=1,
+            max_queue=1,
+            max_batch=2,
+            lease_seconds=5,
+            renewal_seconds=0.1,
+        ),
+    )
+
+    assert worker.run_batch(clock=lambda: NOW) == 2
+    assert gateway.jobs == ["job-active"]
+    assert scheduler.store.get("job-stale-queued").state is JobState.RUNNING
+
+
 def test_lease_loss_requests_cooperative_cancellation(tmp_path: Path, monkeypatch) -> None:
     scheduler = build(tmp_path)
     scheduler.create(job(), context=CONTEXT, now=NOW)
@@ -254,8 +331,38 @@ def test_mid_batch_shutdown_releases_claimed_work(tmp_path: Path, monkeypatch) -
     assert worker.run_batch(clock=lambda: NOW) == 0
     released = scheduler.store.get("job-hardening")
     assert released.state is JobState.SCHEDULED
+    assert released.attempts == 0
     assert released.lease_token is None
     assert released.last_error == "COOPERATIVE_SHUTDOWN"
+
+
+def test_shutdown_release_persists_canonical_evidence_and_preserves_attempt(
+    tmp_path: Path,
+) -> None:
+    store = SQLiteSchedulerStore(StoreConfig(database=tmp_path / "runtime-evidence.db"))
+    store.initialize()
+    scheduler = SchedulerService(
+        store,
+        approved_tasks=frozenset({"TASK-0019"}),
+        registered_workflows=frozenset({("coding", "1")}),
+        evidence_sink=scheduler_runtime_event_sink(store.runtime_store),
+    )
+    scheduler.create(job(), context=CONTEXT, now=NOW)
+    request = scheduler.claim(worker_id="worker-release", context=CONTEXT, now=NOW)
+    assert request is not None
+
+    released = scheduler.release(request, context=CONTEXT, now=NOW)
+    events = store.runtime_store.list_runtime_events(limit=10)
+
+    assert released.attempts == 0
+    assert [event.event_type for event in events] == [
+        RuntimeEventType.ACCEPTED,
+        RuntimeEventType.STARTED,
+        RuntimeEventType.CANCELLED,
+    ]
+    reclaimed = scheduler.claim(worker_id="worker-reclaim", context=CONTEXT, now=NOW)
+    assert reclaimed is not None
+    assert reclaimed.attempt == 1
 
 
 @pytest.mark.parametrize(

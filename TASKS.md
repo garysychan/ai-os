@@ -1283,6 +1283,14 @@ Notes:
   Ruff, formatting, strict Mypy across 112 source files, distribution build, Task Schema and Control
   Plane checks passed with no new blocker. Updated GitHub Python 3.11/3.12 checks and Whole-branch
   Reviewer Revalidation remain pending.
+- Reviewer Revalidation Round 1 found that executor-queued claims did not renew before acquiring a
+  worker slot and that cooperative release evidence was not mapped to the canonical audit stream.
+  Fix Cycle Round 2 starts heartbeat renewal immediately after every claim, refuses dispatch after
+  queued lease loss, records `RELEASED` as canonical cancellation evidence and preserves the retry
+  attempt for work that never dispatched. Round 2 validation passed 263 tests and 7 subtests with
+  85.35% branch coverage; Ruff, changed-file formatting, strict Mypy, Task Schema and Control Plane
+  checks passed with no new blocker. Updated GitHub Python 3.11/3.12 checks and final Whole-branch
+  Reviewer Revalidation remain pending.
 
 ## Task Change Rules
 

@@ -149,6 +149,7 @@ class SchedulerService:
         released = replace(
             current,
             state=JobState.SCHEDULED,
+            attempts=max(current.attempts - 1, 0),
             next_run_at=instant,
             updated_at=instant,
             lease_owner=None,
