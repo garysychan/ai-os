@@ -133,6 +133,34 @@ class SchedulerService:
             lease_seconds=lease_seconds,
         )
 
+    def release(
+        self,
+        request: DispatchRequest,
+        *,
+        context: SchedulerContext,
+        now: datetime | None = None,
+    ) -> JobRecord:
+        """Release undispatched work immediately during cooperative shutdown."""
+        authorize(context, Permission.COORDINATE)
+        instant = now or datetime.now(UTC)
+        current = self.store.get(request.job_id)
+        if current.state is not JobState.RUNNING or current.lease_token != request.lease_token:
+            raise SchedulerConflictError("release requires the current running lease")
+        released = replace(
+            current,
+            state=JobState.SCHEDULED,
+            next_run_at=instant,
+            updated_at=instant,
+            lease_owner=None,
+            lease_token=None,
+            lease_expires_at=None,
+            last_error="COOPERATIVE_SHUTDOWN",
+        )
+        require_transition(current.state, released.state)
+        self.store.save_leased(released, lease_token=request.lease_token)
+        self._emit("RELEASED", released)
+        return released
+
     def complete(
         self,
         request: DispatchRequest,

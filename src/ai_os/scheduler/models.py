@@ -113,4 +113,7 @@ class WorkerLimits:
     max_concurrency: int = 1
     max_batch: int = 10
     poll_seconds: float = 1.0
+    max_queue: int = 10
+    lease_seconds: int = 60
+    renewal_seconds: float = 20.0
     schema_version: int = 1

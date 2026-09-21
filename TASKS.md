@@ -1275,6 +1275,14 @@ Notes:
   coverage; compile, Ruff, changed-file formatting, strict Mypy across 112 source files, Task
   Schema and Control Plane checks passed with no new blocker. Required GitHub Python 3.11 and
   Python 3.12 checks and Whole-branch Reviewer Validation remain pending.
+- Whole-branch Reviewer requested changes for dispatch lease renewal, cancellation/terminal-state
+  races, mid-batch cooperative shutdown and an explicit queue-capacity bound. The Reviewer Fix
+  Cycle added heartbeat renewal with lease-loss cancellation, transactional cancellation CAS,
+  immediate release of undispatched shutdown work and independent concurrency, queue and batch
+  limits. Fix validation passed 260 tests and 7 subtests with 85.35% branch coverage; compile,
+  Ruff, formatting, strict Mypy across 112 source files, distribution build, Task Schema and Control
+  Plane checks passed with no new blocker. Updated GitHub Python 3.11/3.12 checks and Whole-branch
+  Reviewer Revalidation remain pending.
 
 ## Task Change Rules
 

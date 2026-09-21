@@ -5,6 +5,7 @@ from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from threading import Event, Lock
+from time import sleep
 from types import SimpleNamespace
 
 import pytest
@@ -142,6 +143,82 @@ def test_worker_enforces_batch_and_concurrency_limits(tmp_path: Path) -> None:
     assert sum(item.state is JobState.SUCCEEDED for item in scheduler.store.list()) == 3
 
 
+def test_worker_renews_lease_during_long_dispatch(tmp_path: Path, monkeypatch) -> None:
+    scheduler = build(tmp_path)
+    scheduler.create(job(), context=CONTEXT, now=NOW)
+    renewals: list[str] = []
+    original = scheduler.renew
+
+    def record_renewal(request, **kwargs):
+        renewals.append(request.job_id)
+        return original(request, **kwargs)
+
+    monkeypatch.setattr(scheduler, "renew", record_renewal)
+
+    class SlowGateway(RecordingGateway):
+        def dispatch(self, request, *, clock, cancelled) -> bool:
+            sleep(0.25)
+            assert not cancelled()
+            return super().dispatch(request, clock=clock, cancelled=cancelled)
+
+    worker = SchedulerWorker(
+        scheduler,
+        SlowGateway(),
+        worker_id="worker-renew",
+        limits=WorkerLimits(lease_seconds=5, renewal_seconds=0.1),
+    )
+
+    assert worker.run_batch(clock=lambda: NOW) == 1
+    assert renewals
+    assert scheduler.store.get("job-hardening").state is JobState.SUCCEEDED
+
+
+def test_lease_loss_requests_cooperative_cancellation(tmp_path: Path, monkeypatch) -> None:
+    scheduler = build(tmp_path)
+    scheduler.create(job(), context=CONTEXT, now=NOW)
+    cancellation_seen = Event()
+
+    def lose_lease(*args, **kwargs):
+        raise SchedulerConflictError("lease lost")
+
+    monkeypatch.setattr(scheduler, "renew", lose_lease)
+
+    class CancellationGateway(RecordingGateway):
+        def dispatch(self, request, *, clock, cancelled) -> bool:
+            for _ in range(50):
+                if cancelled():
+                    cancellation_seen.set()
+                    return False
+                sleep(0.01)
+            return True
+
+    worker = SchedulerWorker(
+        scheduler,
+        CancellationGateway(),
+        worker_id="worker-lease-loss",
+        limits=WorkerLimits(lease_seconds=5, renewal_seconds=0.1),
+    )
+
+    assert worker.run_batch(clock=lambda: NOW) == 1
+    assert cancellation_seen.is_set()
+    assert scheduler.store.get("job-hardening").state is JobState.RUNNING
+
+
+def test_worker_queue_capacity_bounds_claimed_work(tmp_path: Path) -> None:
+    scheduler = build(tmp_path)
+    for index in range(5):
+        scheduler.create(job(f"job-queue-{index}"), context=CONTEXT, now=NOW)
+    worker = SchedulerWorker(
+        scheduler,
+        RecordingGateway(),
+        worker_id="worker-queue",
+        limits=WorkerLimits(max_concurrency=2, max_queue=0, max_batch=5),
+    )
+
+    assert worker.run_batch(clock=lambda: NOW) == 2
+    assert sum(item.state is JobState.SUCCEEDED for item in scheduler.store.list()) == 2
+
+
 def test_worker_cooperative_shutdown_does_not_claim(tmp_path: Path) -> None:
     scheduler = build(tmp_path)
     scheduler.create(job(), context=CONTEXT, now=NOW)
@@ -155,17 +232,74 @@ def test_worker_cooperative_shutdown_does_not_claim(tmp_path: Path) -> None:
     assert scheduler.store.get("job-hardening").state is JobState.SCHEDULED
 
 
+def test_mid_batch_shutdown_releases_claimed_work(tmp_path: Path, monkeypatch) -> None:
+    scheduler = build(tmp_path)
+    scheduler.create(job(), context=CONTEXT, now=NOW)
+    stopped = Event()
+    original = scheduler.claim
+
+    def claim_then_stop(**kwargs):
+        request = original(**kwargs)
+        stopped.set()
+        return request
+
+    monkeypatch.setattr(scheduler, "claim", claim_then_stop)
+    worker = SchedulerWorker(
+        scheduler,
+        RecordingGateway(),
+        worker_id="worker-mid-stop",
+        stop_event=stopped,
+    )
+
+    assert worker.run_batch(clock=lambda: NOW) == 0
+    released = scheduler.store.get("job-hardening")
+    assert released.state is JobState.SCHEDULED
+    assert released.lease_token is None
+    assert released.last_error == "COOPERATIVE_SHUTDOWN"
+
+
 @pytest.mark.parametrize(
     "limits",
     [
         WorkerLimits(max_concurrency=0),
+        WorkerLimits(max_queue=101),
         WorkerLimits(max_batch=101),
         WorkerLimits(poll_seconds=0),
+        WorkerLimits(lease_seconds=4),
+        WorkerLimits(renewal_seconds=60),
     ],
 )
 def test_invalid_worker_limits_fail_closed(tmp_path: Path, limits: WorkerLimits) -> None:
     with pytest.raises(SchedulerValidationError):
         SchedulerWorker(build(tmp_path), RecordingGateway(), worker_id="worker", limits=limits)
+
+
+def test_cancel_and_complete_race_preserves_one_terminal_outcome(tmp_path: Path) -> None:
+    scheduler = build(tmp_path)
+    scheduler.create(job(), context=CONTEXT, now=NOW)
+    request = scheduler.claim(worker_id="worker-race", context=CONTEXT, now=NOW)
+    assert request is not None
+
+    def cancel():
+        try:
+            return scheduler.cancel("job-hardening", context=CONTEXT, now=NOW)
+        except SchedulerConflictError:
+            return None
+
+    def complete():
+        try:
+            return scheduler.complete(request, succeeded=True, now=NOW)
+        except SchedulerConflictError:
+            return None
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        outcomes = tuple(executor.map(lambda operation: operation(), (cancel, complete)))
+
+    assert sum(outcome is not None for outcome in outcomes) == 1
+    assert scheduler.store.get("job-hardening").state in {
+        JobState.CANCELLED,
+        JobState.SUCCEEDED,
+    }
 
 
 class WorkflowEngineStub:
