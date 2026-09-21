@@ -25,6 +25,8 @@ def dump_job(record: JobRecord) -> str:
                 "max_attempts": spec.max_attempts,
                 "retry_backoff_seconds": spec.retry_backoff_seconds,
                 "timeout_seconds": spec.timeout_seconds,
+                "max_elapsed_seconds": spec.max_elapsed_seconds,
+                "jitter_seconds": spec.jitter_seconds,
                 "schema_version": spec.schema_version,
             },
             "state": record.state.value,
@@ -59,6 +61,8 @@ def load_job(payload: str) -> JobRecord:
             max_attempts=raw["max_attempts"],
             retry_backoff_seconds=raw["retry_backoff_seconds"],
             timeout_seconds=raw["timeout_seconds"],
+            max_elapsed_seconds=raw.get("max_elapsed_seconds", 86_400),
+            jitter_seconds=raw.get("jitter_seconds", 0),
             schema_version=raw["schema_version"],
         )
     )

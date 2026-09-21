@@ -1171,27 +1171,27 @@ retry, cancel and inspect bounded jobs without bypassing Task dependencies, Cont
 Agent permissions, Workflow budgets, Tool policy, approval gates or the Execution Engine.
 
 Acceptance Criteria:
-- [ ] Canonical immutable schedule, job, attempt, lease and result models are explicitly versioned.
+- [x] Canonical immutable schedule, job, attempt, lease and result models are explicitly versioned.
 - [x] One-time, delayed and bounded recurring schedules use timezone-aware timestamps and a
   deterministic clock boundary.
 - [x] Background jobs reference approved Tasks and registered Workflow definitions; arbitrary
   callables, shell commands and provider payloads are not persisted or executed.
-- [ ] The Scheduler dispatches work only through the existing Controller, Agent Runtime, Workflow
+- [x] The Scheduler dispatches work only through the existing Controller, Agent Runtime, Workflow
   Engine and Execution Engine authority chain.
-- [ ] Task dependency, assignment, permission and approval gates are revalidated immediately
+- [x] Task dependency, assignment, permission and approval gates are revalidated immediately
   before every dispatch.
-- [ ] Job state transitions are explicit, deterministic and fail closed for unknown, stale or
+- [x] Job state transitions are explicit, deterministic and fail closed for unknown, stale or
   illegal transitions.
 - [x] Persistent jobs, attempts and leases use the governed SQLite Runtime Store with forward-only
   migration, bounded retention and transactional writes.
-- [ ] Atomic claiming, renewable leases and fencing prevent duplicate concurrent execution after
+- [x] Atomic claiming, renewable leases and fencing prevent duplicate concurrent execution after
   worker contention, crash or restart.
-- [ ] Retry count, exponential backoff, jitter, deadline and maximum elapsed time are bounded and
+- [x] Retry count, exponential backoff, jitter, deadline and maximum elapsed time are bounded and
   enforced before dispatch.
-- [ ] Cancellation, timeout and shutdown are cooperative, bounded and recorded without silently
+- [x] Cancellation, timeout and shutdown are cooperative, bounded and recorded without silently
   converting an uncertain outcome into success.
 - [x] Recurring schedules prevent unbounded catch-up, clock-skew loops and duplicate fire times.
-- [ ] Worker concurrency, queue capacity, polling interval and batch size have explicit limits.
+- [x] Worker concurrency, queue capacity, polling interval and batch size have explicit limits.
 - [x] Job payloads, errors and inspection output cannot expose secrets, prompts, filesystem paths,
   provider payloads or arbitrary private values.
 - [x] Every scheduling, claim, dispatch, retry, cancellation, timeout and terminal outcome emits a
@@ -1206,7 +1206,7 @@ Acceptance Criteria:
   persistence reopen without replaying completed work.
 - [x] Existing Controller, Execution, Workflow, Tool, Adapter, persistence, observability and
   monitoring public APIs remain compatible.
-- [ ] Positive, negative, authorization, concurrency, recovery, timeout and redaction tests exist.
+- [x] Positive, negative, authorization, concurrency, recovery, timeout and redaction tests exist.
 - [ ] Tests pass on Python 3.11 and Python 3.12.
 - [x] Coverage remains at or above the configured 80% threshold.
 - [x] Control Plane Consistency Check has no new blocking finding.
@@ -1266,6 +1266,15 @@ Notes:
   compile, Ruff, changed-file formatting, strict Mypy, Task Schema and Control Plane checks passed;
   Control Plane remains `WARNING` only for pre-existing findings. Required GitHub Python 3.11 and
   Python 3.12 checks remain pending.
+- Scheduler Integration and Hardening added an explicit fail-closed Job State Machine, renewable
+  fenced leases, deterministic retry jitter and elapsed budgets, bounded concurrent workers with
+  cooperative shutdown, and a Workflow dispatch gateway that revalidates current Task policy and
+  delegates exclusively through the existing Workflow, Controller and Agent authority chain.
+- Hardening validation passed 91 targeted Scheduler, CLI, Workflow, Controller and Agent tests.
+  Full post-hardening Tester Validation passed 252 tests and 7 subtests with 85.29% branch
+  coverage; compile, Ruff, changed-file formatting, strict Mypy across 112 source files, Task
+  Schema and Control Plane checks passed with no new blocker. Required GitHub Python 3.11 and
+  Python 3.12 checks and Whole-branch Reviewer Validation remain pending.
 
 ## Task Change Rules
 

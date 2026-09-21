@@ -379,6 +379,8 @@ def _build_parser() -> argparse.ArgumentParser:
     scheduler_create.add_argument("--max-attempts", type=int, default=1)
     scheduler_create.add_argument("--retry-backoff-seconds", type=int, default=30)
     scheduler_create.add_argument("--timeout-seconds", type=int, default=300)
+    scheduler_create.add_argument("--max-elapsed-seconds", type=int, default=86_400)
+    scheduler_create.add_argument("--jitter-seconds", type=int, default=0)
     scheduler_create.add_argument("--root", type=Path, default=Path.cwd())
     scheduler_create.add_argument("--database", type=Path, required=True)
     scheduler_create.add_argument(
@@ -1757,6 +1759,8 @@ def _run_scheduler(args: argparse.Namespace) -> int:
                 max_attempts=args.max_attempts,
                 retry_backoff_seconds=args.retry_backoff_seconds,
                 timeout_seconds=args.timeout_seconds,
+                max_elapsed_seconds=args.max_elapsed_seconds,
+                jitter_seconds=args.jitter_seconds,
             )
             record = service.create(spec, context=SchedulerContext(role, Permission.COORDINATE))
             payload: dict[str, Any] = {
