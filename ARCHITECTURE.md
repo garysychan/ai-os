@@ -255,3 +255,18 @@ reconstruction is an ordered evidence view, not replay authority. Observability 
 silently approve, repeat or alter runtime execution. Service and CLI inspection require an explicit
 canonical Agent role with `read_control`; the SQLite repository remains an internal persistence
 boundary protected by operating-system file permissions.
+
+## 15. Runtime Metrics and Health Monitoring
+
+`src/ai_os/monitoring/` is a read-oriented operational view over canonical, redacted runtime
+events. It derives bounded counters and health snapshots without writing execution state or
+becoming an authorization, replay or scheduling path.
+
+Metric names, labels, cardinality and query windows are validated against explicit bounds. Health
+uses canonical `HEALTHY`, `DEGRADED`, `FAILED`, `UNAVAILABLE` and `STALE` states. Queries require a
+canonical Agent role with `read_control`; arbitrary labels, private diagnostic payloads and
+unbounded windows fail closed. Monitoring failures remain isolated from runtime outcomes.
+Components publish only canonical health states through narrow injected sinks. Optional probes run
+under a bounded timeout; exceptions and timeouts are converted to sanitized `UNAVAILABLE`
+evidence. Aggregate metrics include bounded event counts, lifecycle duration, failure rate and
+query-capacity utilization derived from the authoritative audit stream.
