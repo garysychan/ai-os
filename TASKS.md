@@ -1248,9 +1248,10 @@ Notes:
 - Dependencies: TASK-0005, TASK-0006, TASK-0010, TASK-0011, TASK-0013, TASK-0014, TASK-0015,
   TASK-0017 and TASK-0018.
 - Approval Required: Explicit A2 Human Approval before implementation.
-- CR Status: PROPOSED / APPROVAL REQUIRED / IMPLEMENTATION NOT AUTHORIZED.
-- Implementation must not begin and TASK-0019 must remain `TODO` until approval is recorded on
-  authoritative `main`.
+- Approval Evidence: Repository Owner issued `APPROVE CR-2026-016` on 2026-09-21.
+- CR Status: APPROVED / IMPLEMENTATION AUTHORIZED.
+- Implementation may begin on a dedicated feature branch only after this approval record is merged
+  to authoritative `main`; TASK-0019 remains `TODO` until that branch is created.
 
 ## Task Change Rules
 
