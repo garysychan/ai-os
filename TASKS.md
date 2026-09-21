@@ -1161,7 +1161,7 @@ Notes:
 
 Priority: P1
 Agent: Controller / Planner / Developer / Tester / Reviewer / Fixer
-Status: REVIEW
+Status: DONE
 Dependencies: TASK-0005, TASK-0006, TASK-0010, TASK-0011, TASK-0013, TASK-0014,
 TASK-0015, TASK-0017, TASK-0018
 
@@ -1211,7 +1211,7 @@ Acceptance Criteria:
 - [x] Coverage remains at or above the configured 80% threshold.
 - [x] Control Plane Consistency Check has no new blocking finding.
 - [x] Whole-branch Reviewer result is APPROVE.
-- [ ] Protected Pull Request governance passes before merge.
+- [x] Protected Pull Request governance passes before merge.
 
 Proposed Artifacts:
 - CR-2026-016
@@ -1249,7 +1249,7 @@ Notes:
   TASK-0017 and TASK-0018.
 - Approval Required: Explicit A2 Human Approval before implementation.
 - Approval Evidence: Repository Owner issued `APPROVE CR-2026-016` on 2026-09-21.
-- CR Status: APPROVED / IMPLEMENTATION AUTHORIZED.
+- CR Status: CLOSED / COMPLETED.
 - Implementation may begin on a dedicated feature branch only after this approval record is merged
   to authoritative `main`; TASK-0019 remains `TODO` until that branch is created.
 - Implementation started on `feature/runtime-scheduler-background-jobs` from authoritative `main`
@@ -1294,7 +1294,16 @@ Notes:
 - Control Plane Check branch run `#185` supplied the required Python 3.11 and Python 3.12 evidence.
   Final Whole-branch Reviewer Revalidation returned `APPROVE` with no unresolved finding; the
   Repository Owner authorized `TASK-0019: IN_PROGRESS -> REVIEW` and declared the branch Ready for
-  Review. Protected Pull Request governance remains pending.
+  Review. Protected Pull Request governance remained pending at that review-stage checkpoint.
+- Pull Request `#187` passed protected governance and was squash-merged to authoritative `main` at
+  commit `fe9fdf08080587cabfc1db7555ed7c8459293b9f`. Post-merge Main Run
+  `35605655846` passed; TASK-0019 transitioned from `REVIEW` to `DONE` and CR-2026-016 closed as
+  `CLOSED / COMPLETED`.
+- The closeout branch initially exposed a test-only coupling to TASK-0019 remaining dispatchable:
+  Scheduler CLI tests used the authoritative `TASKS.md`, so the correct `DONE` transition caused
+  job creation to fail closed. The closeout fix uses an isolated `REVIEW` Task fixture while
+  preserving production rejection of scheduling against completed Tasks; 263 tests and 7 subtests
+  passed with 85.35% branch coverage.
 
 ## Task Change Rules
 
