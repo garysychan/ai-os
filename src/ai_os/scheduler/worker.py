@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
-from threading import Event
+from threading import Event, Thread
 from typing import Protocol
 
 from ai_os.agents import AgentRole, Permission
@@ -38,10 +38,16 @@ class SchedulerWorker:
         limits = limits or WorkerLimits()
         if limits.schema_version != 1:
             raise SchedulerValidationError("unsupported worker limits schema")
-        if not 1 <= limits.max_concurrency <= 32 or not 1 <= limits.max_batch <= 100:
-            raise SchedulerValidationError("worker concurrency or batch limit is invalid")
+        if not 1 <= limits.max_concurrency <= 32:
+            raise SchedulerValidationError("worker concurrency limit is invalid")
+        if not 0 <= limits.max_queue <= 100 or not 1 <= limits.max_batch <= 100:
+            raise SchedulerValidationError("worker queue or batch limit is invalid")
         if not 0.1 <= limits.poll_seconds <= 60:
             raise SchedulerValidationError("worker poll interval is invalid")
+        if not 5 <= limits.lease_seconds <= 300:
+            raise SchedulerValidationError("worker lease duration is invalid")
+        if not 0.1 <= limits.renewal_seconds < limits.lease_seconds:
+            raise SchedulerValidationError("worker renewal interval is invalid")
         self.service = service
         self.gateway = gateway
         self.worker_id = worker_id
@@ -55,34 +61,80 @@ class SchedulerWorker:
     def run_batch(self, *, clock: Callable[[], datetime] | None = None) -> int:
         now = clock or (lambda: datetime.now(UTC))
         requests: list[DispatchRequest] = []
-        while len(requests) < self.limits.max_batch and not self.stop_event.is_set():
+        capacity = min(
+            self.limits.max_batch,
+            self.limits.max_concurrency + self.limits.max_queue,
+        )
+        while len(requests) < capacity and not self.stop_event.is_set():
             request = self.service.claim(
                 worker_id=self.worker_id,
                 context=self.context,
                 now=now(),
+                lease_seconds=self.limits.lease_seconds,
             )
             if request is None:
                 break
             requests.append(request)
         if not requests:
             return 0
+        if self.stop_event.is_set():
+            for request in requests:
+                self.service.release(request, context=self.context, now=now())
+            return 0
         with ThreadPoolExecutor(max_workers=self.limits.max_concurrency) as executor:
-            futures = [
-                executor.submit(self._dispatch_one, request, now)
-                for request in requests
-                if not self.stop_event.is_set()
-            ]
+            futures = [executor.submit(self._dispatch_one, request, now) for request in requests]
             for future in futures:
                 future.result()
         return len(futures)
 
     def _dispatch_one(self, request: DispatchRequest, clock: Callable[[], datetime]) -> None:
         if self.stop_event.is_set():
+            self.service.release(request, context=self.context, now=clock())
             return
+        heartbeat_stop = Event()
+        lease_lost = Event()
+        heartbeat = Thread(
+            target=self._renew_lease,
+            args=(request, clock, heartbeat_stop, lease_lost),
+            daemon=True,
+        )
+        heartbeat.start()
         try:
             succeeded = self.gateway.dispatch(
-                request, clock=clock, cancelled=self.stop_event.is_set
+                request,
+                clock=clock,
+                cancelled=lambda: self.stop_event.is_set() or lease_lost.is_set(),
             )
         except Exception:
             succeeded = False
-        self.service.complete(request, succeeded=succeeded, now=clock())
+        finally:
+            heartbeat_stop.set()
+            heartbeat.join()
+        if lease_lost.is_set():
+            return
+        self.service.complete(
+            request,
+            succeeded=succeeded and not self.stop_event.is_set(),
+            now=clock(),
+        )
+
+    def _renew_lease(
+        self,
+        request: DispatchRequest,
+        clock: Callable[[], datetime],
+        heartbeat_stop: Event,
+        lease_lost: Event,
+    ) -> None:
+        while not heartbeat_stop.wait(self.limits.renewal_seconds):
+            if self.stop_event.is_set():
+                return
+            try:
+                self.service.renew(
+                    request,
+                    context=self.context,
+                    now=clock(),
+                    lease_seconds=self.limits.lease_seconds,
+                )
+            except Exception:
+                lease_lost.set()
+                return

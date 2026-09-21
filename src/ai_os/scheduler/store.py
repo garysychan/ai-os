@@ -167,24 +167,43 @@ class SQLiteSchedulerStore:
         return record
 
     def cancel(self, job_id: str, *, now: datetime) -> JobRecord:
-        current = self.get(job_id)
-        if current.state in TERMINAL_JOB_STATES:
-            raise SchedulerConflictError("terminal job cannot be cancelled")
-        require_transition(current.state, JobState.CANCELLED)
-        cancelled = replace(
-            current,
-            state=JobState.CANCELLED,
-            updated_at=now,
-            lease_owner=None,
-            lease_token=None,
-            lease_expires_at=None,
-        )
         with self._connect() as connection:
-            connection.execute(
-                """UPDATE scheduler_jobs SET state=?, lease_owner=NULL, lease_token=NULL,
-                   lease_expires_at=NULL, updated_at=?, payload=? WHERE job_id=?""",
-                (JobState.CANCELLED.value, now.isoformat(), dump_job(cancelled), job_id),
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT payload FROM scheduler_jobs WHERE job_id = ?", (job_id,)
+            ).fetchone()
+            if row is None:
+                connection.rollback()
+                raise SchedulerNotFoundError(f"unknown job: {job_id}")
+            current = load_job(str(row[0]))
+            if current.state in TERMINAL_JOB_STATES:
+                connection.rollback()
+                raise SchedulerConflictError("terminal job cannot be cancelled")
+            require_transition(current.state, JobState.CANCELLED)
+            cancelled = replace(
+                current,
+                state=JobState.CANCELLED,
+                updated_at=now,
+                lease_owner=None,
+                lease_token=None,
+                lease_expires_at=None,
             )
+            updated = connection.execute(
+                """UPDATE scheduler_jobs SET state=?, lease_owner=NULL, lease_token=NULL,
+                   lease_expires_at=NULL, updated_at=?, payload=?
+                   WHERE job_id=? AND state=?""",
+                (
+                    JobState.CANCELLED.value,
+                    now.isoformat(),
+                    dump_job(cancelled),
+                    job_id,
+                    current.state.value,
+                ),
+            ).rowcount
+            if updated != 1:
+                connection.rollback()
+                raise SchedulerConflictError("job changed while cancellation was requested")
+            connection.commit()
         return cancelled
 
     def _connect(self) -> sqlite3.Connection:
