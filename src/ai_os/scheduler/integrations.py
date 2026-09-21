@@ -16,6 +16,7 @@ _EVENT_TYPES = {
     "SUCCEEDED": RuntimeEventType.COMPLETED,
     "FAILED": RuntimeEventType.FAILED,
     "RETRY_WAIT": RuntimeEventType.FAILED,
+    "RELEASED": RuntimeEventType.CANCELLED,
     "CANCELLED": RuntimeEventType.CANCELLED,
     "TIMED_OUT": RuntimeEventType.TIMED_OUT,
 }
