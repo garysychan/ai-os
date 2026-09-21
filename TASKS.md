@@ -1032,7 +1032,7 @@ Notes:
 
 Priority: P1
 Agent: Controller / Planner / Developer / Tester / Reviewer / Fixer
-Status: REVIEW
+Status: DONE
 Dependencies: TASK-0010, TASK-0011, TASK-0013, TASK-0014, TASK-0015, TASK-0016, TASK-0017
 
 Description:
@@ -1055,7 +1055,7 @@ Acceptance Criteria:
 - [x] Stale, unavailable, degraded and failed components are distinguishable without treating
   monitoring failure as execution authorization.
 - [x] Probe timeouts and failures are isolated and cannot block or change an execution outcome.
-- [ ] Metric and health persistence, if installed, uses the governed Persistent Runtime Store with
+- [x] Metric and health persistence, if installed, uses the governed Persistent Runtime Store with
   bounded retention and forward-only migration.
 - [x] Query access requires canonical Agent identity and the existing `read_control` permission.
 - [x] CLI supports bounded `aios health` and `aios metrics` inspection in human-readable and JSON
@@ -1068,7 +1068,7 @@ Acceptance Criteria:
 - [x] Coverage remains at or above the configured 80% threshold.
 - [x] Control Plane Consistency Check has no new blocking finding.
 - [x] Whole-branch Reviewer result is APPROVE.
-- [ ] Protected Pull Request governance passes before merge.
+- [x] Protected Pull Request governance passes before merge.
 
 Proposed Artifacts:
 - CR-2026-015
@@ -1146,6 +1146,16 @@ Notes:
   blocking security, authority, compatibility or consistency finding remains. TASK-0018
   transitioned from `IN_PROGRESS` to `REVIEW` and is Ready for Review. Protected Pull Request
   governance remains required before merge.
+- PR #51 passed protected governance and was squash merged to `main` as
+  `d2c7ecd0ae8dd7c48406a03e7fa2d0f557f8abcd`.
+- Post-merge Main Control Plane Check Run `35586188019` passed the required Python 3.11 and
+  Python 3.12 checks on the squash commit.
+- Independent metric and health persistence was not installed; monitoring continues to read the
+  governed Persistent Runtime Store's authoritative audit events, so no new retention or migration
+  boundary was introduced.
+- All acceptance criteria and required governance gates passed; TASK-0018 transitioned from
+  `REVIEW` to `DONE` and CR-2026-015 is `CLOSED / COMPLETED`.
+- CR Final Status: CLOSED / COMPLETED.
 
 ## Task Change Rules
 
