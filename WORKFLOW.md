@@ -311,3 +311,11 @@ Audit and trace inspection is read-only and query-bounded. It must not change Ta
 permissions, satisfy an approval gate, replay a Tool invocation or otherwise become an execution
 authority. Every service or CLI query must carry an explicit canonical Agent role authorized for
 `read_control`; missing or incompatible query authority fails closed before repository access.
+
+## 13. Runtime Monitoring Lifecycle
+
+Monitoring reads canonical redacted runtime evidence through a bounded repository query, validates
+the caller's `read_control` authority, and produces an immutable metric set or health snapshot.
+Metrics and health are advisory evidence only: they cannot transition Tasks, dispatch Agents,
+approve work or alter an execution result. Invalid labels, excessive windows, stale evidence and
+probe failures are surfaced explicitly and never converted into authorization.

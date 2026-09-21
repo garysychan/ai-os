@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -55,6 +55,7 @@ from ai_os.governance import (
     parse_tasks,
     run_consistency_checks,
 )
+from ai_os.monitoring import MonitoringError, MonitoringQueryContext, MonitoringService
 from ai_os.observability import (
     AuditQueryContext,
     ObservabilityError,
@@ -345,6 +346,18 @@ def _build_parser() -> argparse.ArgumentParser:
     trace_show.add_argument(
         "--actor-role", required=True, choices=[role.value for role in AgentRole]
     )
+
+    health = commands.add_parser("health", help="Inspect governed runtime health.")
+    health.add_argument("--database", type=Path, required=True)
+    health.add_argument("--actor-role", required=True, choices=[role.value for role in AgentRole])
+    health.add_argument("--stale-seconds", type=int, default=900)
+    health.add_argument("--json", action="store_true")
+
+    metrics = commands.add_parser("metrics", help="Inspect bounded runtime metrics.")
+    metrics.add_argument("--database", type=Path, required=True)
+    metrics.add_argument("--actor-role", required=True, choices=[role.value for role in AgentRole])
+    metrics.add_argument("--window-seconds", type=int, default=3600)
+    metrics.add_argument("--json", action="store_true")
 
     return parser
 
@@ -1582,6 +1595,81 @@ def _human_runtime_events(operation: str, events: tuple[RuntimeEvent, ...]) -> s
     return "\n".join(lines)
 
 
+def _run_monitoring(args: argparse.Namespace) -> int:
+    try:
+        store = SQLiteRuntimeStore(StoreConfig(database=args.database))
+        service = MonitoringService(store)
+        context = MonitoringQueryContext(AgentRole(args.actor_role), Permission.READ_CONTROL)
+        if args.command == "health":
+            snapshot = service.health(
+                context=context, stale_after=timedelta(seconds=args.stale_seconds)
+            )
+            payload = {
+                "operation": "RUNTIME HEALTH",
+                "status": "PASS",
+                "health": snapshot.status.value,
+                "checked_at": snapshot.checked_at.isoformat(),
+                "checks": [
+                    {
+                        "component": check.component.value,
+                        "status": check.status.value,
+                        "summary": check.summary.value,
+                    }
+                    for check in snapshot.checks
+                ],
+            }
+        else:
+            points = service.metrics(
+                context=context, window=timedelta(seconds=args.window_seconds)
+            )
+            payload = {
+                "operation": "RUNTIME METRICS",
+                "status": "PASS",
+                "metrics": [
+                    {
+                        "name": point.name,
+                        "value": point.value,
+                        "unit": point.unit,
+                        "timestamp": point.timestamp.isoformat(),
+                        "labels": dict(point.labels),
+                    }
+                    for point in points
+                ],
+            }
+    except (OSError, PersistenceError, MonitoringError) as error:
+        payload = {
+            "operation": "RUNTIME MONITORING",
+            "status": "FAIL",
+            "error_type": type(error).__name__,
+            "error": str(error),
+        }
+        output = (
+            json.dumps(payload, indent=2)
+            if args.json
+            else f"RUNTIME MONITORING\nStatus: FAIL\nError: {error}"
+        )
+        print(output)
+        return 2
+    if args.json:
+        print(json.dumps(payload, indent=2))
+    elif args.command == "health":
+        lines = ["RUNTIME HEALTH", f"Status: {payload['health']}"]
+        lines.extend(
+            f"{check['component']}: {check['status']} ({check['summary']})"
+            for check in payload["checks"]
+        )
+        print("\n".join(lines))
+    else:
+        lines = ["RUNTIME METRICS"]
+        lines.extend(
+            f"{point['name']}: {point['value']} {point['unit']}"
+            for point in payload["metrics"]
+        )
+        lines.append("Status: PASS")
+        print("\n".join(lines))
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the AI OS CLI and return a process exit code."""
     parser = _build_parser()
@@ -1718,6 +1806,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command in {"audit", "trace"}:
         return _run_observability(args)
+
+    if args.command in {"health", "metrics"}:
+        return _run_monitoring(args)
 
     parser.error("Unsupported command")
     return 2
