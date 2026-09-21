@@ -16,8 +16,8 @@ from .models import (
     HealthDetail,
     HealthSnapshot,
     HealthStatus,
-    MetricPoint,
     MetricName,
+    MetricPoint,
     MetricUnit,
     MonitoringQueryContext,
     RuntimeComponent,
@@ -71,9 +71,7 @@ class MonitoringService:
         if window <= timedelta(0) or window > timedelta(days=7):
             raise MonitoringValidationError("metric window must be within seven days")
         events = self._events()
-        recent = tuple(
-            event for event in events if instant - window <= event.timestamp <= instant
-        )
+        recent = tuple(event for event in events if instant - window <= event.timestamp <= instant)
         counts = Counter(event.event_type.value for event in recent)
         terminal = {
             RuntimeEventType.COMPLETED,

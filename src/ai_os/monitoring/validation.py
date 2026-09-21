@@ -5,10 +5,9 @@ from __future__ import annotations
 import math
 
 from ai_os.agents import Permission, PermissionPolicy
-
-from .errors import MonitoringAuthorizationError, MonitoringValidationError
 from ai_os.observability import RuntimeEventSource, RuntimeEventType
 
+from .errors import MonitoringAuthorizationError, MonitoringValidationError
 from .models import HealthStatus, MetricName, MetricPoint, MetricUnit, MonitoringQueryContext
 
 _SAFE_LABELS = frozenset({"source", "event_type", "status"})

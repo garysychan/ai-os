@@ -26,7 +26,6 @@ from ai_os.monitoring import (
 from ai_os.observability import RuntimeEvent, RuntimeEventSource, RuntimeEventType
 from ai_os.persistence import SQLiteRuntimeStore, StoreConfig
 
-
 NOW = datetime(2026, 9, 21, 12, tzinfo=UTC)
 
 
@@ -180,9 +179,7 @@ def test_invalid_probe_result_fails_closed() -> None:
 
 
 def test_probe_timeout_is_isolated() -> None:
-    service = MonitoringService(
-        Repository(), probes=(SlowProbe(),), probe_timeout_seconds=0.01
-    )
+    service = MonitoringService(Repository(), probes=(SlowProbe(),), probe_timeout_seconds=0.01)
 
     snapshot = service.health(context=context(), now=NOW)
 
@@ -192,9 +189,7 @@ def test_probe_timeout_is_isolated() -> None:
 
 @pytest.mark.skipif(os.name != "posix", reason="SIGTERM behavior is POSIX-specific")
 def test_probe_ignoring_sigterm_is_force_killed() -> None:
-    service = MonitoringService(
-        Repository(), probes=(StubbornProbe(),), probe_timeout_seconds=0.01
-    )
+    service = MonitoringService(Repository(), probes=(StubbornProbe(),), probe_timeout_seconds=0.01)
 
     snapshot = service.health(context=context(), now=NOW)
 
@@ -250,9 +245,7 @@ def test_unknown_metric_name_and_private_canonical_looking_value_fail_closed() -
         (MetricName.FAILURE_RATE, MetricUnit.RATIO, 1.1),
     ],
 )
-def test_metric_semantics_fail_closed(
-    name: MetricName, unit: MetricUnit, value: float
-) -> None:
+def test_metric_semantics_fail_closed(name: MetricName, unit: MetricUnit, value: float) -> None:
     with pytest.raises(MonitoringValidationError):
         validate_metric(MetricPoint(name, value, unit, NOW))
 
