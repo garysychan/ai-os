@@ -1028,6 +1028,88 @@ Notes:
 - All acceptance criteria and governance gates passed; TASK-0017 transitioned from `REVIEW` to
   `DONE` and CR-2026-014 is `CLOSED / COMPLETED`.
 
+## TASK-0018 — Install Runtime Metrics and Health Monitoring
+
+Priority: P1
+Agent: Controller / Planner / Developer / Tester / Reviewer / Fixer
+Status: TODO
+Dependencies: TASK-0010, TASK-0011, TASK-0013, TASK-0014, TASK-0015, TASK-0016, TASK-0017
+
+Description:
+Install a governed Runtime Metrics and Health Monitoring layer over the authoritative runtime
+evidence. The layer reports bounded operational health and aggregate metrics without acquiring
+execution authority, exposing sensitive payloads or replacing the Runtime Observability audit
+trail.
+
+Acceptance Criteria:
+- [ ] Canonical immutable metric, health-check and health-snapshot models are versioned.
+- [ ] Health states are explicit, deterministic and limited to documented canonical values.
+- [ ] Controller, Execution, Adapter, Tool, Workflow, persistence and observability components can
+  publish health signals through explicit dependency-injected boundaries.
+- [ ] Metrics are derived from authoritative runtime events or explicit probes without mutating
+  execution state.
+- [ ] Counters, durations, failure rates and capacity indicators use bounded names, labels,
+  cardinality and query windows.
+- [ ] Secrets, prompts, filesystem paths, provider payloads and arbitrary private values cannot be
+  used as metric labels or health details.
+- [ ] Stale, unavailable, degraded and failed components are distinguishable without treating
+  monitoring failure as execution authorization.
+- [ ] Probe timeouts and failures are isolated and cannot block or change an execution outcome.
+- [ ] Metric and health persistence, if installed, uses the governed Persistent Runtime Store with
+  bounded retention and forward-only migration.
+- [ ] Query access requires canonical Agent identity and the existing `read_control` permission.
+- [ ] CLI supports bounded `aios health` and `aios metrics` inspection in human-readable and JSON
+  formats.
+- [ ] Unknown metric types, invalid health states, unbounded labels and unauthorized queries fail
+  closed.
+- [ ] Existing Runtime Observability, Controller and Execution public APIs remain compatible.
+- [ ] Positive, negative, authorization, timeout, redaction, persistence and recovery tests exist.
+- [ ] Tests pass on Python 3.11 and Python 3.12.
+- [ ] Coverage remains at or above the configured 80% threshold.
+- [ ] Control Plane Consistency Check has no new blocking finding.
+- [ ] Whole-branch Reviewer result is APPROVE.
+- [ ] Protected Pull Request governance passes before merge.
+
+Proposed Artifacts:
+- CR-2026-015
+- Proposed `feature/runtime-metrics-health`
+- Proposed `src/ai_os/monitoring/`
+- Proposed `tests/monitoring/`
+- Proposed CLI integration for `aios health` and `aios metrics`
+- Persistent Runtime Store migration only if required by the approved design
+
+Risks:
+- High-cardinality labels could exhaust memory or storage.
+- Health probes could accidentally become a second execution or authorization path.
+- Sensitive runtime data could leak through metric dimensions or diagnostic messages.
+- Monitoring failures could incorrectly report healthy state or block normal execution.
+- Unbounded retention or query windows could create resource exhaustion.
+- Aggregated metrics could diverge from the authoritative append-only audit trail.
+
+Notes:
+- Change ID: CR-2026-015.
+- Requester: Repository Owner.
+- Date: 2026-09-21.
+- Target Document: `ARCHITECTURE.md`, `WORKFLOW.md`, `TASKS.md` and executable runtime modules.
+- Change Type: ARCHITECTURE / WORKFLOW / SECURITY.
+- Classification: MINOR compatible capability extension with operational and privacy impact.
+- Reason: Add an operational view of runtime availability, degradation, failures, latency and
+  bounded aggregate activity above the installed Runtime Observability and Audit Trail.
+- Current State: Runtime events are normalized, redacted, persisted and queryable, but the runtime
+  has no canonical health model, governed probes or bounded metric aggregation surface.
+- Proposed Change: Add a read-oriented monitoring boundary that derives aggregate metrics from
+  authoritative evidence and accepts explicit health signals without owning execution decisions.
+- Affected Documents: `ARCHITECTURE.md`, `WORKFLOW.md`, `TASKS.md`.
+- Affected Agents: Controller, Planner, Developer, Tester, Reviewer and Fixer.
+- Impact: Adds runtime diagnosis and operational visibility while preserving Agent authority,
+  permission, audit and execution boundaries.
+- Dependencies: TASK-0010, TASK-0011 and TASK-0013 through TASK-0017 as listed above.
+- Approval Required: Explicit A2 Human Approval before implementation.
+- Approval Evidence: Not yet provided.
+- CR Status: PROPOSED / NOT AUTHORIZED.
+- No implementation branch, runtime code, migration or external monitoring integration may be
+  created until CR-2026-015 receives explicit approval.
+
 ## Task Change Rules
 
 1. Do not silently delete completed tasks.
