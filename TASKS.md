@@ -1309,11 +1309,7 @@ Notes:
 
 Priority: P1
 Agent: Controller / Planner / Developer / Tester / Reviewer / Fixer
-<<<<<<< HEAD
-Status: REVIEW
-=======
-Status: TODO
->>>>>>> origin/main
+Status: IN_PROGRESS
 Dependencies: TASK-0005, TASK-0006, TASK-0010, TASK-0011, TASK-0012, TASK-0013,
 TASK-0014, TASK-0015, TASK-0017, TASK-0018, TASK-0019
 
@@ -1323,7 +1319,6 @@ versioned environment profiles and authorized secret-reference resolution withou
 persisting secret values in source, Task, Workflow, Scheduler, audit, CLI or error payloads.
 
 Acceptance Criteria:
-<<<<<<< HEAD
 - [x] Immutable versioned configuration and secret-reference models exist.
 - [x] Development, test and production profiles are explicit.
 - [x] Configuration precedence is deterministic and tested.
@@ -1344,30 +1339,7 @@ Acceptance Criteria:
 - [x] Tests pass on Python 3.11 and Python 3.12.
 - [x] Coverage remains at or above the configured 80% threshold.
 - [x] Control Plane Consistency Check has no new blocking finding.
-- [x] Whole-branch Reviewer result is `APPROVE`.
-=======
-- [ ] Immutable versioned configuration and secret-reference models exist.
-- [ ] Development, test and production profiles are explicit.
-- [ ] Configuration precedence is deterministic and tested.
-- [ ] Unknown keys, invalid values and unsupported schema versions fail closed.
-- [ ] Secret values are represented only by canonical references.
-- [ ] Environment Secret Provider implements an explicit provider protocol.
-- [ ] Secret access requires an authorized canonical identity and permission.
-- [ ] Missing or empty required secrets fail closed.
-- [ ] Secret values cannot appear in representations, CLI, logs, audit or errors.
-- [ ] Redaction covers authorization headers and embedded secret values.
-- [ ] Configuration inspection is bounded and redacted.
-- [ ] Runtime components receive typed configuration rather than unvalidated dictionaries.
-- [ ] No secret is persisted in Scheduler, Task, Workflow or Runtime Store payloads.
-- [ ] `.gitignore` protects supported local secret files.
-- [ ] CLI validate, show, profiles and dry-run operations exist.
-- [ ] Positive, negative, authorization and redaction tests exist.
-- [ ] Existing public APIs remain backward compatible.
-- [ ] Tests pass on Python 3.11 and Python 3.12.
-- [ ] Coverage remains at or above the configured 80% threshold.
-- [ ] Control Plane Consistency Check has no new blocking finding.
 - [ ] Whole-branch Reviewer result is `APPROVE`.
->>>>>>> origin/main
 - [ ] Protected Pull Request governance passes before merge.
 
 Proposed Artifacts:
@@ -1408,8 +1380,9 @@ Notes:
 - TASK-0020 transitioned from `IN_PROGRESS` to `REVIEW` and is Ready for Review; protected Pull
   Request governance remains required before merge.
 
-- TASK-0020 remains `TODO`; no implementation branch or runtime change has started.
-
+- Post-conflict Whole-branch Reviewer Revalidation result: `REQUEST_CHANGES`; unresolved
+  merge-conflict markers and contradictory task state were found in `TASKS.md`.
+- TASK-0020 returned from `REVIEW` to `IN_PROGRESS` for the post-conflict fix cycle.
 
 ## Task Change Rules
 
