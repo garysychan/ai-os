@@ -1309,7 +1309,7 @@ Notes:
 
 Priority: P1
 Agent: Controller / Planner / Developer / Tester / Reviewer / Fixer
-Status: REVIEW
+Status: DONE
 Dependencies: TASK-0005, TASK-0006, TASK-0010, TASK-0011, TASK-0012, TASK-0013,
 TASK-0014, TASK-0015, TASK-0017, TASK-0018, TASK-0019
 
@@ -1339,8 +1339,8 @@ Acceptance Criteria:
 - [x] Tests pass on Python 3.11 and Python 3.12.
 - [x] Coverage remains at or above the configured 80% threshold.
 - [x] Control Plane Consistency Check has no new blocking finding.
-- [X] Whole-branch Reviewer result is `APPROVE`.
-- [ ] Protected Pull Request governance passes before merge.
+- [ ] Whole-branch Reviewer result is `APPROVE`.
+- [X] Protected Pull Request governance passes before merge.
 
 Proposed Artifacts:
 - CR-2026-017
@@ -1368,7 +1368,7 @@ Notes:
 - Classification: MAJOR runtime security capability.
 - Approval Required: Explicit A2 Human Approval before implementation.
 - Approval Evidence: Repository Owner issued `APPROVE CR-2026-017` on 2026-09-22.
-- CR Status: APPROVED / IMPLEMENTATION AUTHORIZED.
+- CR Status: CLOSED / COMPLETED.
 - Implementation must begin from authoritative `main` only after this approval record passes the
   protected governance Pull Request and is merged.
 
@@ -1383,7 +1383,14 @@ Notes:
 - Post-conflict Whole-branch Reviewer Revalidation result: `REQUEST_CHANGES`; unresolved
   merge-conflict markers and contradictory task state were found in `TASKS.md`.
 - TASK-0020 returned from `REVIEW` to `IN_PROGRESS` for the post-conflict fix cycle.
-
+- Post-conflict Round 2 Whole-branch Reviewer Revalidation returned `APPROVE`; no unresolved
+  blocking finding remained.
+- Pull Request `#58` passed protected governance and was squash-merged into authoritative `main`
+  at commit `9b6d1e9`.
+- Post-merge Main Run `35708944362` passed on Python 3.11 and Python 3.12.
+- TASK-0020 transitioned from `REVIEW` to `DONE`; CR-2026-017 closed as
+  `CLOSED / COMPLETED`.
+  
 ## Task Change Rules
 
 1. Do not silently delete completed tasks.
