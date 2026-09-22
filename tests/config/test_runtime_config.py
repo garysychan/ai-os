@@ -26,11 +26,7 @@ def test_profiles_and_precedence_are_explicit_and_deterministic() -> None:
 
 def test_configuration_contains_only_secret_references() -> None:
     config = load_config(
-        {
-            "providers": [
-                {"name": "primary", "model": "model-1", "api_key_ref": "env://AI_API_KEY"}
-            ]
-        }
+        {"providers": [{"name": "primary", "model": "model-1", "api_key_ref": "env://AI_API_KEY"}]}
     )
     assert config.providers[0].api_key.redacted == "env://AI_API_KEY"
     assert config.redacted()["providers"] == [

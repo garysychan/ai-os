@@ -1778,9 +1778,7 @@ def _run_config(args: argparse.Namespace) -> int:
             }
             if args.config_command == "resolve":
                 payload["dry_run"] = True
-                payload["secret_references"] = [
-                    item.api_key.redacted for item in config.providers
-                ]
+                payload["secret_references"] = [item.api_key.redacted for item in config.providers]
     except (OSError, ConfigurationError, ValueError) as error:
         payload = {
             "operation": "RUNTIME CONFIGURATION",
