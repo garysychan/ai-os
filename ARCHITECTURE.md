@@ -284,6 +284,7 @@ revalidated by the dispatch integration before work can run. Scheduler events ap
 redacted Runtime Observability evidence and publish only advisory health signals. Scheduler or
 monitoring failure cannot authorize, approve or silently complete execution.
 
+
 ## 17. Runtime Configuration and Secrets Management
 
 `src/ai_os/config/` loads versioned runtime settings through explicit environment profiles and

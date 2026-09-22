@@ -333,6 +333,7 @@ exponential backoff; one-time success is terminal, while recurring success sched
 future fire time from completion to prevent unbounded catch-up. Cancellation, timeout, stale lease
 recovery and every terminal outcome remain explicit, persisted and auditable.
 
+
 ## 15. Runtime Configuration and Secret Lifecycle
 
 Select one canonical environment profile, load its versioned JSON configuration, apply explicit
@@ -344,3 +345,4 @@ Provider credentials remain `env://` references during validation, display and d
 last responsible execution boundary, the Controller requests one named secret through the governed
 secret service. Authorization, provider lookup or value validation failure stops the operation;
 resolved material is never displayed or persisted and redaction occurs before observability output.
+
