@@ -283,3 +283,14 @@ execution authority: Controller, Agent, Workflow, Execution, Tool and approval p
 revalidated by the dispatch integration before work can run. Scheduler events append canonical,
 redacted Runtime Observability evidence and publish only advisory health signals. Scheduler or
 monitoring failure cannot authorize, approve or silently complete execution.
+
+## 17. Runtime Configuration and Secrets Management
+
+`src/ai_os/config/` loads versioned runtime settings through explicit environment profiles and
+deterministic precedence. Unknown keys, invalid bounds, profile mismatches and unsafe production
+storage fail closed before a typed `RuntimeConfig` can reach a runtime component.
+
+`src/ai_os/secrets/` separates secret references from secret material. Configuration stores only
+approved `env://` references; only the Controller with `coordinate` permission may resolve them
+through `SecretService`. Secret material has redacted string representations and must never enter
+configuration output, logs, runtime events, audit records, task records or repository files.

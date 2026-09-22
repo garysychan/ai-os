@@ -1309,7 +1309,7 @@ Notes:
 
 Priority: P1
 Agent: Controller / Planner / Developer / Tester / Reviewer / Fixer
-Status: TODO
+Status: IN_PROGRESS
 Dependencies: TASK-0005, TASK-0006, TASK-0010, TASK-0011, TASK-0012, TASK-0013,
 TASK-0014, TASK-0015, TASK-0017, TASK-0018, TASK-0019
 
@@ -1371,7 +1371,8 @@ Notes:
 - CR Status: APPROVED / IMPLEMENTATION AUTHORIZED.
 - Implementation must begin from authoritative `main` only after this approval record passes the
   protected governance Pull Request and is merged.
-- TASK-0020 remains `TODO`; no implementation branch or runtime change has started.
+- Implementation started on `feature/runtime-config-secrets` after the approved CR-2026-017
+  record became the implementation baseline; TASK-0020 transitioned from `TODO` to `IN_PROGRESS`.
 
 ## Task Change Rules
 
