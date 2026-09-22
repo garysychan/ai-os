@@ -1305,6 +1305,74 @@ Notes:
   preserving production rejection of scheduling against completed Tasks; 263 tests and 7 subtests
   passed with 85.35% branch coverage.
 
+## TASK-0020 — Implement Governed Runtime Configuration and Secret Store
+
+Priority: P1
+Agent: Controller / Planner / Developer / Tester / Reviewer / Fixer
+Status: TODO
+Dependencies: TASK-0005, TASK-0006, TASK-0010, TASK-0011, TASK-0012, TASK-0013,
+TASK-0014, TASK-0015, TASK-0017, TASK-0018, TASK-0019
+
+Description:
+Install a governed Runtime Configuration and Secrets Management layer that provides typed,
+versioned environment profiles and authorized secret-reference resolution without exposing or
+persisting secret values in source, Task, Workflow, Scheduler, audit, CLI or error payloads.
+
+Acceptance Criteria:
+- [ ] Immutable versioned configuration and secret-reference models exist.
+- [ ] Development, test and production profiles are explicit.
+- [ ] Configuration precedence is deterministic and tested.
+- [ ] Unknown keys, invalid values and unsupported schema versions fail closed.
+- [ ] Secret values are represented only by canonical references.
+- [ ] Environment Secret Provider implements an explicit provider protocol.
+- [ ] Secret access requires an authorized canonical identity and permission.
+- [ ] Missing or empty required secrets fail closed.
+- [ ] Secret values cannot appear in representations, CLI, logs, audit or errors.
+- [ ] Redaction covers authorization headers and embedded secret values.
+- [ ] Configuration inspection is bounded and redacted.
+- [ ] Runtime components receive typed configuration rather than unvalidated dictionaries.
+- [ ] No secret is persisted in Scheduler, Task, Workflow or Runtime Store payloads.
+- [ ] `.gitignore` protects supported local secret files.
+- [ ] CLI validate, show, profiles and dry-run operations exist.
+- [ ] Positive, negative, authorization and redaction tests exist.
+- [ ] Existing public APIs remain backward compatible.
+- [ ] Tests pass on Python 3.11 and Python 3.12.
+- [ ] Coverage remains at or above the configured 80% threshold.
+- [ ] Control Plane Consistency Check has no new blocking finding.
+- [ ] Whole-branch Reviewer result is `APPROVE`.
+- [ ] Protected Pull Request governance passes before merge.
+
+Proposed Artifacts:
+- CR-2026-017
+- Proposed `feature/runtime-config-secrets`
+- Proposed `src/ai_os/config/`
+- Proposed `src/ai_os/secrets/`
+- Proposed `tests/config/`
+- Proposed `tests/secrets/`
+- Proposed governed configuration and secret inspection CLI
+
+Risks:
+- Secret values could leak through representations, exceptions, logs or audit evidence.
+- Incorrect precedence could select unsafe production configuration.
+- Environment variables could be enumerated by an unauthorized caller.
+- Tests could accidentally access real developer credentials.
+- Secret rotation could create inconsistent long-running execution state.
+- Insecure defaults could weaken production policy.
+
+Notes:
+- Change ID: CR-2026-017.
+- Requester: Repository Owner.
+- Date: 2026-09-22.
+- Target Documents: `ARCHITECTURE.md`, `WORKFLOW.md`, `TASKS.md` and executable runtime modules.
+- Change Type: ARCHITECTURE / SECURITY / CONFIGURATION / INTEGRATION.
+- Classification: MAJOR runtime security capability.
+- Approval Required: Explicit A2 Human Approval before implementation.
+- Approval Evidence: Repository Owner issued `APPROVE CR-2026-017` on 2026-09-22.
+- CR Status: APPROVED / IMPLEMENTATION AUTHORIZED.
+- Implementation must begin from authoritative `main` only after this approval record passes the
+  protected governance Pull Request and is merged.
+- TASK-0020 remains `TODO`; no implementation branch or runtime change has started.
+
 ## Task Change Rules
 
 1. Do not silently delete completed tasks.
