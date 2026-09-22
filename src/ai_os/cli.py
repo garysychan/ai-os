@@ -86,7 +86,6 @@ from ai_os.scheduler import (
     SchedulerService,
     SQLiteSchedulerStore,
 )
-
 from ai_os.secrets import (
     EnvironmentSecretProvider,
     SecretAccessContext,
@@ -94,7 +93,6 @@ from ai_os.secrets import (
     SecretReference,
     SecretService,
 )
-
 from ai_os.tasks import (
     AcceptanceCriterion,
     Priority,
