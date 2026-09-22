@@ -24,6 +24,10 @@ def test_reference_and_environment_provider_are_explicit() -> None:
     assert provider.resolve(reference) == "very-secret"
     with pytest.raises(SecretReferenceError):
         SecretReference.parse("AI_API_KEY=very-secret")
+    with pytest.raises(SecretReferenceError):
+        SecretReference("unsafe", "AI_API_KEY")
+    with pytest.raises(SecretReferenceError):
+        SecretReference("env", "lowercase")
 
 
 def test_authorized_resolution_returns_opaque_material() -> None:
@@ -51,10 +55,15 @@ def test_unauthorized_or_missing_resolution_fails_closed() -> None:
 
 def test_redaction_covers_headers_assignments_and_embedded_values() -> None:
     output = redact_text(
-        "Authorization: Bearer-token api_key=abc note=embedded-secret",
+        "Authorization: Bearer top-secret\n"
+        "Proxy-Authorization: Basic dXNlcjpwYXNz\n"
+        "X-API-Key: abc\n"
+        "token=assigned-secret note=embedded-secret",
         secret_values=("embedded-secret",),
     )
-    assert "Bearer-token" not in output
+    assert "top-secret" not in output
+    assert "dXNlcjpwYXNz" not in output
     assert "abc" not in output
+    assert "assigned-secret" not in output
     assert "embedded-secret" not in output
-    assert output.count("[REDACTED]") == 3
+    assert output.count("[REDACTED]") == 5

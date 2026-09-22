@@ -10,6 +10,7 @@ from ai_os.agents import AgentRole, Permission
 from .errors import SecretReferenceError
 
 _REFERENCE = re.compile(r"^env://([A-Z][A-Z0-9_]{1,127})$")
+_NAME = re.compile(r"^[A-Z][A-Z0-9_]{1,127}$")
 
 
 @dataclass(frozen=True)
@@ -17,6 +18,10 @@ class SecretReference:
     provider: str
     name: str
     schema_version: int = 1
+
+    def __post_init__(self) -> None:
+        if self.schema_version != 1 or self.provider != "env" or _NAME.fullmatch(self.name) is None:
+            raise SecretReferenceError("secret reference is not canonical")
 
     @classmethod
     def parse(cls, value: str) -> SecretReference:

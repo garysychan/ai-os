@@ -2,6 +2,8 @@
 
 from pathlib import PurePath
 
+from ai_os.secrets import SecretError, SecretReference
+
 from .errors import ConfigurationValidationError
 from .models import EnvironmentProfile, RuntimeConfig
 
@@ -27,6 +29,12 @@ def validate_config(config: RuntimeConfig) -> None:
             raise ConfigurationValidationError("provider configuration is invalid")
         if provider.name in names:
             raise ConfigurationValidationError(f"duplicate provider name: {provider.name}")
+        try:
+            canonical_reference = SecretReference.parse(provider.api_key.redacted)
+        except SecretError as error:
+            raise ConfigurationValidationError("provider secret reference is invalid") from error
+        if canonical_reference != provider.api_key:
+            raise ConfigurationValidationError("provider secret reference is not canonical")
         names.add(provider.name)
     if len(config.feature_flags) > 64 or len(set(config.feature_flags)) != len(
         config.feature_flags

@@ -1,4 +1,5 @@
 import json
+from dataclasses import asdict
 
 import pytest
 
@@ -6,6 +7,7 @@ from ai_os.config import (
     ConfigurationNotFoundError,
     ConfigurationValidationError,
     EnvironmentProfile,
+    RuntimeConfig,
     load_config,
     load_config_file,
     persistence_config,
@@ -55,6 +57,27 @@ def test_profile_mismatch_and_unsafe_production_storage_fail() -> None:
         load_config({"environment": "production"})
     with pytest.raises(ConfigurationValidationError):
         load_config({"database_path": ":memory:"}, profile=EnvironmentProfile.PRODUCTION)
+
+
+def test_component_projection_revalidates_typed_configuration() -> None:
+    unsafe = RuntimeConfig(
+        environment=EnvironmentProfile.PRODUCTION,
+        database_path="/tmp/outside.db",
+        execution_timeout_seconds=300,
+        scheduler_lease_seconds=60,
+        audit_retention_days=90,
+    )
+    with pytest.raises(ConfigurationValidationError):
+        persistence_config(unsafe)
+
+
+def test_persistence_projection_contains_no_secret_material() -> None:
+    config = load_config(
+        {"providers": [{"name": "primary", "model": "model-1", "api_key_ref": "env://AI_API_KEY"}]}
+    )
+    persisted = asdict(persistence_config(config))
+    assert "AI_API_KEY" not in repr(persisted)
+    assert "api_key" not in repr(persisted).lower()
 
 
 def test_json_file_loading(tmp_path) -> None:
