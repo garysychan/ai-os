@@ -383,7 +383,7 @@ def _build_parser() -> argparse.ArgumentParser:
     metrics.add_argument("--window-seconds", type=int, default=3600)
     metrics.add_argument("--json", action="store_true")
 
-<<<<<<< HEAD
+
     config = commands.add_parser("config", help="Validate governed runtime configuration.")
     config_commands = config.add_subparsers(dest="config_command", required=True)
     config_profiles = config_commands.add_parser("profiles")
@@ -413,8 +413,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     secrets_check.add_argument("--json", action="store_true")
 
-=======
->>>>>>> origin/main
+
     scheduler = commands.add_parser("scheduler", help="Manage governed background jobs.")
     scheduler_commands = scheduler.add_subparsers(dest="scheduler_command", required=True)
     scheduler_create = scheduler_commands.add_parser("create")
@@ -1761,7 +1760,7 @@ def _run_monitoring(args: argparse.Namespace) -> int:
     return 0
 
 
-<<<<<<< HEAD
+
 def _run_config(args: argparse.Namespace) -> int:
     try:
         if args.config_command == "profiles":
@@ -1846,8 +1845,7 @@ def _run_secrets(args: argparse.Namespace) -> int:
     return 0 if present else 1
 
 
-=======
->>>>>>> origin/main
+
 def _scheduler_payload(record: Any) -> dict[str, Any]:
     return {
         "job_id": record.spec.job_id,
@@ -2122,15 +2120,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command in {"health", "metrics"}:
         return _run_monitoring(args)
 
-<<<<<<< HEAD
+
     if args.command == "config":
         return _run_config(args)
 
     if args.command == "secrets":
         return _run_secrets(args)
 
-=======
->>>>>>> origin/main
+
     if args.command == "scheduler":
         return _run_scheduler(args)
 
