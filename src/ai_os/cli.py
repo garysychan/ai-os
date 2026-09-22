@@ -26,7 +26,14 @@ from ai_os.agents import (
     AgentRuntime,
     Capability,
     Permission,
+    PermissionPolicy,
     canonical_agents,
+)
+from ai_os.config import (
+    PROFILE_DEFAULTS,
+    ConfigurationError,
+    EnvironmentProfile,
+    load_config_file,
 )
 from ai_os.controller import (
     ControllerEngine,
@@ -78,6 +85,13 @@ from ai_os.scheduler import (
     SchedulerError,
     SchedulerService,
     SQLiteSchedulerStore,
+)
+from ai_os.secrets import (
+    EnvironmentSecretProvider,
+    SecretAccessContext,
+    SecretError,
+    SecretReference,
+    SecretService,
 )
 from ai_os.tasks import (
     AcceptanceCriterion,
@@ -366,6 +380,35 @@ def _build_parser() -> argparse.ArgumentParser:
     metrics.add_argument("--actor-role", required=True, choices=[role.value for role in AgentRole])
     metrics.add_argument("--window-seconds", type=int, default=3600)
     metrics.add_argument("--json", action="store_true")
+
+    config = commands.add_parser("config", help="Validate governed runtime configuration.")
+    config_commands = config.add_subparsers(dest="config_command", required=True)
+    config_profiles = config_commands.add_parser("profiles")
+    config_profiles.add_argument("--json", action="store_true")
+    for command in ("validate", "show", "resolve"):
+        action = config_commands.add_parser(command)
+        action.add_argument("configuration", type=Path)
+        action.add_argument(
+            "--profile",
+            default=EnvironmentProfile.DEVELOPMENT.value,
+            choices=[item.value for item in EnvironmentProfile],
+        )
+        if command in {"show", "resolve"}:
+            action.add_argument(
+                "--actor-role", required=True, choices=[role.value for role in AgentRole]
+            )
+        if command == "resolve":
+            action.add_argument("--dry-run", action="store_true", required=True)
+        action.add_argument("--json", action="store_true")
+
+    secrets = commands.add_parser("secrets", help="Check an authorized secret reference.")
+    secrets_commands = secrets.add_subparsers(dest="secrets_command", required=True)
+    secrets_check = secrets_commands.add_parser("check")
+    secrets_check.add_argument("reference")
+    secrets_check.add_argument(
+        "--actor-role", required=True, choices=[role.value for role in AgentRole]
+    )
+    secrets_check.add_argument("--json", action="store_true")
 
     scheduler = commands.add_parser("scheduler", help="Manage governed background jobs.")
     scheduler_commands = scheduler.add_subparsers(dest="scheduler_command", required=True)
@@ -1713,6 +1756,90 @@ def _run_monitoring(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_config(args: argparse.Namespace) -> int:
+    try:
+        if args.config_command == "profiles":
+            payload: dict[str, Any] = {
+                "operation": "RUNTIME CONFIGURATION",
+                "status": "PASS",
+                "profiles": {
+                    profile.value: defaults for profile, defaults in PROFILE_DEFAULTS.items()
+                },
+            }
+        else:
+            profile = EnvironmentProfile(args.profile)
+            config = load_config_file(args.configuration, profile=profile)
+            if args.config_command in {"show", "resolve"}:
+                PermissionPolicy().require(AgentRole(args.actor_role), Permission.READ_CONTROL)
+            payload = {
+                "operation": "RUNTIME CONFIGURATION",
+                "status": "PASS",
+                "configuration": config.redacted(),
+            }
+            if args.config_command == "resolve":
+                payload["dry_run"] = True
+                payload["secret_references"] = [item.api_key.redacted for item in config.providers]
+    except (OSError, ConfigurationError, ValueError) as error:
+        payload = {
+            "operation": "RUNTIME CONFIGURATION",
+            "status": "FAIL",
+            "error_type": type(error).__name__,
+            "error": str(error),
+        }
+        message = f"CONFIGURATION\nStatus: FAIL\nError: {error}"
+        print(json.dumps(payload, indent=2) if args.json else message)
+        return 2
+    print(json.dumps(payload, indent=2) if args.json else _config_human(payload))
+    return 0
+
+
+def _config_human(payload: dict[str, Any]) -> str:
+    if "profiles" in payload:
+        return "RUNTIME CONFIGURATION PROFILES\n" + "\n".join(payload["profiles"])
+    config = payload["configuration"]
+    return "\n".join(
+        [
+            "RUNTIME CONFIGURATION",
+            f"Profile: {config['environment']}",
+            f"Database: {config['database_path']}",
+            f"Providers: {len(config['providers'])}",
+            "Status: PASS",
+        ]
+    )
+
+
+def _run_secrets(args: argparse.Namespace) -> int:
+    try:
+        reference = SecretReference.parse(args.reference)
+        service = SecretService(EnvironmentSecretProvider())
+        present = service.check(
+            reference,
+            context=SecretAccessContext(AgentRole(args.actor_role), Permission.COORDINATE),
+        )
+        payload = {
+            "operation": "SECRET CHECK",
+            "status": "PASS" if present else "MISSING",
+            "reference": reference.redacted,
+            "present": present,
+        }
+    except (SecretError, ValueError) as error:
+        payload = {
+            "operation": "SECRET CHECK",
+            "status": "FAIL",
+            "error_type": type(error).__name__,
+            "error": str(error),
+        }
+        message = f"SECRET CHECK\nStatus: FAIL\nError: {error}"
+        print(json.dumps(payload, indent=2) if args.json else message)
+        return 2
+    print(
+        json.dumps(payload, indent=2)
+        if args.json
+        else f"SECRET CHECK\nReference: {reference.redacted}\nStatus: {payload['status']}"
+    )
+    return 0 if present else 1
+
+
 def _scheduler_payload(record: Any) -> dict[str, Any]:
     return {
         "job_id": record.spec.job_id,
@@ -1986,6 +2113,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command in {"health", "metrics"}:
         return _run_monitoring(args)
+
+    if args.command == "config":
+        return _run_config(args)
+
+    if args.command == "secrets":
+        return _run_secrets(args)
 
     if args.command == "scheduler":
         return _run_scheduler(args)

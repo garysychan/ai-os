@@ -1309,7 +1309,7 @@ Notes:
 
 Priority: P1
 Agent: Controller / Planner / Developer / Tester / Reviewer / Fixer
-Status: TODO
+Status: REVIEW
 Dependencies: TASK-0005, TASK-0006, TASK-0010, TASK-0011, TASK-0012, TASK-0013,
 TASK-0014, TASK-0015, TASK-0017, TASK-0018, TASK-0019
 
@@ -1319,27 +1319,27 @@ versioned environment profiles and authorized secret-reference resolution withou
 persisting secret values in source, Task, Workflow, Scheduler, audit, CLI or error payloads.
 
 Acceptance Criteria:
-- [ ] Immutable versioned configuration and secret-reference models exist.
-- [ ] Development, test and production profiles are explicit.
-- [ ] Configuration precedence is deterministic and tested.
-- [ ] Unknown keys, invalid values and unsupported schema versions fail closed.
-- [ ] Secret values are represented only by canonical references.
-- [ ] Environment Secret Provider implements an explicit provider protocol.
-- [ ] Secret access requires an authorized canonical identity and permission.
-- [ ] Missing or empty required secrets fail closed.
-- [ ] Secret values cannot appear in representations, CLI, logs, audit or errors.
-- [ ] Redaction covers authorization headers and embedded secret values.
-- [ ] Configuration inspection is bounded and redacted.
-- [ ] Runtime components receive typed configuration rather than unvalidated dictionaries.
-- [ ] No secret is persisted in Scheduler, Task, Workflow or Runtime Store payloads.
-- [ ] `.gitignore` protects supported local secret files.
-- [ ] CLI validate, show, profiles and dry-run operations exist.
-- [ ] Positive, negative, authorization and redaction tests exist.
-- [ ] Existing public APIs remain backward compatible.
-- [ ] Tests pass on Python 3.11 and Python 3.12.
-- [ ] Coverage remains at or above the configured 80% threshold.
-- [ ] Control Plane Consistency Check has no new blocking finding.
-- [ ] Whole-branch Reviewer result is `APPROVE`.
+- [x] Immutable versioned configuration and secret-reference models exist.
+- [x] Development, test and production profiles are explicit.
+- [x] Configuration precedence is deterministic and tested.
+- [x] Unknown keys, invalid values and unsupported schema versions fail closed.
+- [x] Secret values are represented only by canonical references.
+- [x] Environment Secret Provider implements an explicit provider protocol.
+- [x] Secret access requires an authorized canonical identity and permission.
+- [x] Missing or empty required secrets fail closed.
+- [x] Secret values cannot appear in representations, CLI, logs, audit or errors.
+- [x] Redaction covers authorization headers and embedded secret values.
+- [x] Configuration inspection is bounded and redacted.
+- [x] Runtime components receive typed configuration rather than unvalidated dictionaries.
+- [x] No secret is persisted in Scheduler, Task, Workflow or Runtime Store payloads.
+- [x] `.gitignore` protects supported local secret files.
+- [x] CLI validate, show, profiles and dry-run operations exist.
+- [x] Positive, negative, authorization and redaction tests exist.
+- [x] Existing public APIs remain backward compatible.
+- [x] Tests pass on Python 3.11 and Python 3.12.
+- [x] Coverage remains at or above the configured 80% threshold.
+- [x] Control Plane Consistency Check has no new blocking finding.
+- [X] Whole-branch Reviewer result is `APPROVE`.
 - [ ] Protected Pull Request governance passes before merge.
 
 Proposed Artifacts:
@@ -1371,7 +1371,18 @@ Notes:
 - CR Status: APPROVED / IMPLEMENTATION AUTHORIZED.
 - Implementation must begin from authoritative `main` only after this approval record passes the
   protected governance Pull Request and is merged.
-- TASK-0020 remains `TODO`; no implementation branch or runtime change has started.
+
+- Implementation started on `feature/runtime-config-secrets` after the approved CR-2026-017
+  record became the implementation baseline; TASK-0020 transitioned from `TODO` to `IN_PROGRESS`.
+- Tester evidence: 283 tests passed with 85.64% coverage; Python 3.11 and Python 3.12 GitHub
+  Control Plane Checks passed for the Round 1 hardened implementation.
+- Whole-branch Reviewer Revalidation result: `APPROVE`; all Round 1 security findings are resolved.
+- TASK-0020 transitioned from `IN_PROGRESS` to `REVIEW` and is Ready for Review; protected Pull
+  Request governance remains required before merge.
+
+- Post-conflict Whole-branch Reviewer Revalidation result: `REQUEST_CHANGES`; unresolved
+  merge-conflict markers and contradictory task state were found in `TASKS.md`.
+- TASK-0020 returned from `REVIEW` to `IN_PROGRESS` for the post-conflict fix cycle.
 
 ## Task Change Rules
 
