@@ -1402,7 +1402,7 @@ Classification: MAJOR — introduces a new authenticated service boundary over g
 capabilities.
 Approval Required: Explicit A2 Human Approval before task creation or implementation.
 Approval Evidence: Repository Owner issued `APPROVE CR-2026-018` on 2026-09-23.
-Status: APPROVED / PENDING GOVERNANCE MERGE
+Status: APPROVED / OPEN
 
 Reason:
 AI OS currently exposes governed runtime capabilities through Python APIs and CLI commands but
@@ -1530,7 +1530,97 @@ Notes:
 - Implementation must begin from authoritative `main` only after the governance merge.
 - Actual execution or mutation APIs require a separate Change Request.
 - Coding has not started.
+- The approved CR-2026-018 governance record was merged into authoritative `main`.
+- Main post-merge Control Plane Checks passed on Python 3.11 and Python 3.12.
+- TASK-0021 implementation begins only from the resulting authoritative `main`.
 
+## TASK-0021 — Implement Governed Runtime API and Service Boundary
+
+Priority: P1
+Agent: Controller / Planner / Developer / Tester / Reviewer / Fixer
+Status: IN_PROGRESS
+Dependencies: TASK-0005, TASK-0006, TASK-0010, TASK-0011, TASK-0012, TASK-0013,
+TASK-0014, TASK-0015, TASK-0017, TASK-0018, TASK-0019, TASK-0020
+
+Description:
+Install a private-first, versioned Runtime API and application-service boundary that exposes
+authorized read, validation and dry-run capabilities without bypassing existing Controller,
+authorization, persistence, redaction, audit or runtime governance.
+
+Acceptance Criteria:
+- [ ] A versioned `/v1` Runtime API application exists.
+- [ ] The service binds to a private or loopback interface by default.
+- [ ] Health, version and bounded capability endpoints exist.
+- [ ] Authentication resolves credentials to a server-controlled canonical Principal.
+- [ ] Client-supplied roles, identities or permissions cannot grant authority.
+- [ ] Missing, invalid or unsupported authentication fails closed.
+- [ ] Authorization is default-deny and enforced before application-service access.
+- [ ] Control Plane inspection and consistency-check endpoints are bounded and authorized.
+- [ ] Task, Agent and Workflow inspection endpoints are bounded and authorized.
+- [ ] Workflow validation reuses existing governed runtime validation.
+- [ ] Execution-request validation reuses existing governed runtime validation.
+- [ ] Dry-run operations cannot dispatch execution or cause external side effects.
+- [ ] SQLite remains the authoritative runtime persistence boundary.
+- [ ] HTTP routes cannot directly access SQLite tables, secret providers, scheduler mutation
+  functions, execution adapters or external providers.
+- [ ] Request, response and error envelopes are explicit, immutable and versioned.
+- [ ] Unknown fields and unsupported schema versions fail closed.
+- [ ] Pagination, request-size limits, query bounds and processing timeouts are explicit.
+- [ ] Arbitrary filesystem paths, URLs and provider endpoints are rejected.
+- [ ] Secret values cannot appear in requests, responses, representations, logs, audit records,
+  traces or errors.
+- [ ] Authentication credentials and authorization headers are redacted.
+- [ ] Error responses cannot expose stack traces, SQL details, filesystem paths or private
+  runtime payloads.
+- [ ] Security-relevant requests emit bounded and redacted audit evidence.
+- [ ] Production configuration rejects absent or insecure authentication.
+- [ ] Actual execution dispatch, Task mutation, Workflow mutation, Scheduler mutation, shell
+  execution, direct Tool invocation and direct Adapter invocation remain unavailable.
+- [ ] Existing Python and CLI public APIs remain backward compatible.
+- [ ] Positive, negative, authentication, authorization, redaction, bounds and dry-run tests exist.
+- [ ] Tests pass on Python 3.11 and Python 3.12.
+- [ ] Coverage remains at or above the configured 80% threshold.
+- [ ] Control Plane Consistency Check has no new blocking finding.
+- [ ] Whole-branch Reviewer result is `APPROVE`.
+- [ ] Protected Pull Request governance passes before merge.
+
+Proposed Artifacts:
+- CR-2026-018
+- `feature/governed-runtime-api`
+- Proposed `src/ai_os/api/`
+- Proposed versioned API request, response and error models
+- Proposed authentication and canonical Principal boundary
+- Proposed authorization dependencies
+- Proposed application-service layer
+- Proposed read, validation and dry-run routes
+- Proposed API lifecycle integration
+- Proposed `tests/api/`
+- Proposed governed Runtime API documentation
+
+Risks:
+- The API could become a second Controller and bypass runtime governance.
+- Caller-controlled identity fields could enable privilege escalation.
+- Authentication material, secret references or private payloads could leak through transport,
+  logs, audit evidence or errors.
+- Dry-run behavior could diverge from actual runtime validation.
+- Unbounded requests or queries could exhaust runtime resources.
+- Arbitrary paths or URLs could introduce traversal or SSRF risks.
+- Process-local authentication state could behave incorrectly under multiple workers.
+- HTTP dependencies increase the security and maintenance surface.
+- Internal runtime models could accidentally become unstable public contracts.
+
+Notes:
+- Change ID: CR-2026-018.
+- Requester: Repository Owner.
+- Approval Evidence: Repository Owner issued `APPROVE CR-2026-018` on 2026-09-23.
+- CR Status: APPROVED / OPEN.
+- Classification: MAJOR authenticated Runtime service boundary.
+- Change Type: ARCHITECTURE / SECURITY / INTEGRATION.
+- Implementation is restricted to read, validation and dry-run operations.
+- Actual execution and mutation APIs require a separate approved Change Request.
+- TASK-0021 transitioned from `TODO` to `IN_PROGRESS` when the dedicated implementation branch
+  was created from authoritative `main`.
+  
 ## Task Change Rules
 
 1. Do not silently delete completed tasks.
