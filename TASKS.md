@@ -1391,6 +1391,146 @@ Notes:
 - TASK-0020 transitioned from `REVIEW` to `DONE`; CR-2026-017 closed as
   `CLOSED / COMPLETED`.
   
+ ## CR-2026-018 — Governed Runtime API and Service Boundary
+
+Change ID: CR-2026-018
+Requester: Repository Owner
+Date: 2026-09-23
+Target Documents: `ARCHITECTURE.md`, `WORKFLOW.md`, `TASKS.md` and executable runtime modules
+Change Type: ARCHITECTURE / SECURITY / INTEGRATION
+Classification: MAJOR — introduces a new authenticated service boundary over governed runtime
+capabilities.
+Approval Required: Explicit A2 Human Approval before task creation or implementation.
+Approval Evidence: Repository Owner issued `APPROVE CR-2026-018` on 2026-09-23.
+Status: APPROVED / PENDING GOVERNANCE MERGE
+
+Reason:
+AI OS currently exposes governed runtime capabilities through Python APIs and CLI commands but
+does not provide a versioned service boundary for authorized clients to inspect runtime state,
+validate governed requests or produce dry-run plans.
+
+Current Rule / State:
+- Runtime capabilities are accessed through internal Python APIs and the governed CLI.
+- SQLite remains the authoritative runtime persistence boundary.
+- Authorization uses canonical identities and permissions.
+- Configuration and secret handling are governed by CR-2026-017.
+- No versioned HTTP API or governed service-host lifecycle currently exists.
+- Client-supplied identities, roles or permissions are not trusted authorization evidence.
+
+Proposed Change:
+Install a private-first, versioned `/v1` Runtime API and application-service boundary using
+FastAPI. The initial scope is restricted to authorized read, validation and dry-run operations.
+API routes must reuse existing governed runtime capabilities rather than duplicate or bypass
+Controller, authorization, redaction, persistence or audit rules.
+
+Approved Initial Scope:
+- Runtime health, version and capability inspection.
+- Bounded Control Plane status and consistency checks.
+- Bounded Task, Agent and Workflow inspection.
+- Workflow and execution-request validation.
+- Governed dry-run planning without execution dispatch.
+- Bounded execution, trace, audit and metrics inspection.
+- Canonical authentication and server-side Principal resolution.
+- Default-deny authorization.
+- Versioned request, response and error models.
+- Redaction, pagination, request-size limits, query bounds and timeouts.
+- Security-relevant requests produce bounded, redacted audit evidence.
+
+Service Boundary:
+Requests must pass through versioned routing, strict request validation, authentication,
+server-side Principal resolution, authorization, application services, existing governed runtime
+capabilities and bounded redacted response mapping.
+
+HTTP routes must not directly access SQLite tables, secret providers, scheduler mutation
+functions, execution adapters or external providers.
+
+Explicit Exclusions:
+- Actual workflow or execution dispatch.
+- Task, Workflow or Agent mutation.
+- Scheduler creation, cancellation or worker control.
+- Shell execution.
+- Direct Tool or Adapter invocation.
+- Arbitrary filesystem paths, URLs or provider endpoints.
+- Secret resolution, enumeration or disclosure.
+- Secret values in requests, responses, logs, audit records or errors.
+- Runtime configuration mutation.
+- Control Plane document mutation through the API.
+- GitHub writes or Pull Request operations.
+- Public Internet deployment.
+- Operator console or other web UI.
+- OAuth, SSO or external identity-provider integration.
+- Multi-tenancy.
+- External LLM or data-provider integration.
+- Replacement of existing Controller or Runtime authorization rules.
+
+Affected Documents:
+- `ARCHITECTURE.md`
+- `WORKFLOW.md`
+- `TASKS.md`
+
+Affected Agents:
+- Controller
+- Planner
+- Developer
+- Tester
+- Reviewer
+- Fixer
+
+Impact:
+- Adds a new authenticated runtime ingress boundary.
+- Establishes stable and versioned transport contracts.
+- Extends authorization, redaction and audit requirements to HTTP payloads.
+- Preserves SQLite as the authoritative persistence boundary.
+- Preserves existing Controller, Workflow, Execution, Scheduler, Tool, Adapter, configuration and
+  secret authority.
+- Existing Python and CLI public interfaces must remain backward compatible.
+
+Risks:
+- The API could become a second Controller and bypass governance.
+- Caller-controlled identity fields could enable privilege escalation.
+- Credentials, secret references or private payloads could leak through logs or errors.
+- Dry-run behavior could diverge from actual runtime validation.
+- Unbounded requests or queries could exhaust runtime resources.
+- Arbitrary paths or URLs could introduce traversal or SSRF risks.
+- Process-local authentication state could behave incorrectly with multiple workers.
+- New HTTP dependencies increase the security and maintenance surface.
+- Internal runtime models could accidentally become unstable public contracts.
+
+Dependencies:
+- TASK-0005
+- TASK-0006
+- TASK-0010
+- TASK-0011
+- TASK-0012
+- TASK-0013
+- TASK-0014
+- TASK-0015
+- TASK-0017
+- TASK-0018
+- TASK-0019
+- TASK-0020
+- CR-2026-017
+
+Proposed Artifacts:
+- TASK-0021
+- Proposed dedicated implementation branch created from authoritative `main`
+- Proposed `src/ai_os/api/`
+- Proposed versioned API request, response and error models
+- Proposed authentication and canonical Principal boundary
+- Proposed authorization dependencies
+- Proposed application-service layer
+- Proposed read, validation and dry-run routes
+- Proposed API lifecycle integration
+- Proposed `tests/api/`
+
+Notes:
+- This approval authorizes creation of the governance record only.
+- TASK-0021 must not be created until this approved CR record passes protected Pull Request
+  governance and is merged into authoritative `main`.
+- Implementation must begin from authoritative `main` only after the governance merge.
+- Actual execution or mutation APIs require a separate Change Request.
+- Coding has not started.
+  
 ## Task Change Rules
 
 1. Do not silently delete completed tasks.
