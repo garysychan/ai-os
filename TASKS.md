@@ -1548,39 +1548,39 @@ authorized read, validation and dry-run capabilities without bypassing existing 
 authorization, persistence, redaction, audit or runtime governance.
 
 Acceptance Criteria:
-- [ ] A versioned `/v1` Runtime API application exists.
-- [ ] The service binds to a private or loopback interface by default.
-- [ ] Health, version and bounded capability endpoints exist.
-- [ ] Authentication resolves credentials to a server-controlled canonical Principal.
-- [ ] Client-supplied roles, identities or permissions cannot grant authority.
-- [ ] Missing, invalid or unsupported authentication fails closed.
-- [ ] Authorization is default-deny and enforced before application-service access.
-- [ ] Control Plane inspection and consistency-check endpoints are bounded and authorized.
-- [ ] Task, Agent and Workflow inspection endpoints are bounded and authorized.
-- [ ] Workflow validation reuses existing governed runtime validation.
-- [ ] Execution-request validation reuses existing governed runtime validation.
-- [ ] Dry-run operations cannot dispatch execution or cause external side effects.
-- [ ] SQLite remains the authoritative runtime persistence boundary.
-- [ ] HTTP routes cannot directly access SQLite tables, secret providers, scheduler mutation
+- [x] A versioned `/v1` Runtime API application exists.
+- [x] The service binds to a private or loopback interface by default.
+- [x] Health, version and bounded capability endpoints exist.
+- [x] Authentication resolves credentials to a server-controlled canonical Principal.
+- [x] Client-supplied roles, identities or permissions cannot grant authority.
+- [x] Missing, invalid or unsupported authentication fails closed.
+- [x] Authorization is default-deny and enforced before application-service access.
+- [x] Control Plane inspection and consistency-check endpoints are bounded and authorized.
+- [x] Task, Agent and Workflow inspection endpoints are bounded and authorized.
+- [x] Workflow validation reuses existing governed runtime validation.
+- [x] Execution-request validation reuses existing governed runtime validation.
+- [x] Dry-run operations cannot dispatch execution or cause external side effects.
+- [x] SQLite remains the authoritative runtime persistence boundary.
+- [x] HTTP routes cannot directly access SQLite tables, secret providers, scheduler mutation
   functions, execution adapters or external providers.
-- [ ] Request, response and error envelopes are explicit, immutable and versioned.
-- [ ] Unknown fields and unsupported schema versions fail closed.
-- [ ] Pagination, request-size limits, query bounds and processing timeouts are explicit.
-- [ ] Arbitrary filesystem paths, URLs and provider endpoints are rejected.
-- [ ] Secret values cannot appear in requests, responses, representations, logs, audit records,
+- [x] Request, response and error envelopes are explicit, immutable and versioned.
+- [x] Unknown fields and unsupported schema versions fail closed.
+- [x] Pagination, request-size limits, query bounds and processing timeouts are explicit.
+- [x] Arbitrary filesystem paths, URLs and provider endpoints are rejected.
+- [x] Secret values cannot appear in requests, responses, representations, logs, audit records,
   traces or errors.
-- [ ] Authentication credentials and authorization headers are redacted.
-- [ ] Error responses cannot expose stack traces, SQL details, filesystem paths or private
+- [x] Authentication credentials and authorization headers are redacted.
+- [x] Error responses cannot expose stack traces, SQL details, filesystem paths or private
   runtime payloads.
-- [ ] Security-relevant requests emit bounded and redacted audit evidence.
-- [ ] Production configuration rejects absent or insecure authentication.
-- [ ] Actual execution dispatch, Task mutation, Workflow mutation, Scheduler mutation, shell
+- [x] Security-relevant requests emit bounded and redacted audit evidence.
+- [x] Production configuration rejects absent or insecure authentication.
+- [x] Actual execution dispatch, Task mutation, Workflow mutation, Scheduler mutation, shell
   execution, direct Tool invocation and direct Adapter invocation remain unavailable.
-- [ ] Existing Python and CLI public APIs remain backward compatible.
-- [ ] Positive, negative, authentication, authorization, redaction, bounds and dry-run tests exist.
+- [x] Existing Python and CLI public APIs remain backward compatible.
+- [x] Positive, negative, authentication, authorization, redaction, bounds and dry-run tests exist.
 - [ ] Tests pass on Python 3.11 and Python 3.12.
-- [ ] Coverage remains at or above the configured 80% threshold.
-- [ ] Control Plane Consistency Check has no new blocking finding.
+- [x] Coverage remains at or above the configured 80% threshold.
+- [x] Control Plane Consistency Check has no new blocking finding.
 - [ ] Whole-branch Reviewer result is `APPROVE`.
 - [ ] Protected Pull Request governance passes before merge.
 
@@ -1620,6 +1620,12 @@ Notes:
 - Actual execution and mutation APIs require a separate approved Change Request.
 - TASK-0021 transitioned from `TODO` to `IN_PROGRESS` when the dedicated implementation branch
   was created from authoritative `main`.
+- Runtime API Core installs a loopback-only FastAPI `/v1` boundary, server-side Principal mapping,
+  default-deny authorization, versioned envelopes, bounded request handling, application services,
+  read/validate/dry-run routes and credential-free bounded API audit evidence.
+- Local validation passed 301 tests and 7 subtests with at least 85% branch coverage. Python compile,
+  Ruff, changed-file formatting, strict Mypy, Task Schema, distribution build and Control Plane
+  checks passed; Control Plane remains `WARNING` only for pre-existing findings.
   
 ## Task Change Rules
 
