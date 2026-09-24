@@ -1578,11 +1578,11 @@ Acceptance Criteria:
   execution, direct Tool invocation and direct Adapter invocation remain unavailable.
 - [x] Existing Python and CLI public APIs remain backward compatible.
 - [x] Positive, negative, authentication, authorization, redaction, bounds and dry-run tests exist.
-- [ ] Tests pass on Python 3.11 and Python 3.12.
+- [x] Tests pass on Python 3.11 and Python 3.12.
 - [x] Coverage remains at or above the configured 80% threshold.
 - [x] Control Plane Consistency Check has no new blocking finding.
-- [X] Whole-branch Reviewer result is `APPROVE`.
-- [X] Protected Pull Request governance passes before merge.
+- [x] Whole-branch Reviewer result is `APPROVE`.
+- [x] Protected Pull Request governance passes before merge.
 
 Proposed Artifacts:
 - CR-2026-018
@@ -1613,7 +1613,7 @@ Notes:
 - Change ID: CR-2026-018.
 - Requester: Repository Owner.
 - Approval Evidence: Repository Owner issued `APPROVE CR-2026-018` on 2026-09-23.
-- CR Status: APPROVED / OPEN.
+- CR Status: CLOSED / COMPLETED.
 - Classification: MAJOR authenticated Runtime service boundary.
 - Change Type: ARCHITECTURE / SECURITY / INTEGRATION.
 - Implementation is restricted to read, validation and dry-run operations.
