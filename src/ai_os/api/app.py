@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable
+from time import monotonic
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Header, Query, Request
@@ -33,10 +34,11 @@ def create_app(
     app.state.config = config
     app.state.authenticator = authenticator
     app.state.services = runtime
-    app.state.audit = ApiAuditRecorder(config.max_audit_events)
+    app.state.audit = ApiAuditRecorder(config.max_audit_events, runtime.observability)
 
     @app.middleware("http")
     async def request_boundary(request: Request, call_next: Handler) -> JSONResponse:
+        started = monotonic()
         request.state.request_id = f"req-{uuid4().hex}"
         content_length = request.headers.get("content-length")
         if content_length is not None:
@@ -48,16 +50,17 @@ def create_app(
                 response = _error(
                     request, 413, "REQUEST_TOO_LARGE", "request exceeds configured bound"
                 )
-                _record_audit(request, response, app.state.audit)
+                _record_audit(request, response, app.state.audit, started)
                 return response
         if request.method in {"POST", "PUT", "PATCH"}:
-            body = await request.body()
-            if len(body) > config.max_request_bytes:
+            body = await _receive_bounded_body(request, config.max_request_bytes)
+            if body is None:
                 response = _error(
                     request, 413, "REQUEST_TOO_LARGE", "request exceeds configured bound"
                 )
-                _record_audit(request, response, app.state.audit)
+                _record_audit(request, response, app.state.audit, started)
                 return response
+            request._body = body
         try:
             async with asyncio.timeout(config.request_timeout_seconds):
                 response = await call_next(request)
@@ -65,11 +68,11 @@ def create_app(
             response = _error(
                 request, 504, "REQUEST_TIMED_OUT", "request exceeded configured timeout"
             )
-            _record_audit(request, response, app.state.audit)
+            _record_audit(request, response, app.state.audit, started)
             return response
         response.headers["X-Request-ID"] = request.state.request_id
         response.headers["Cache-Control"] = "no-store"
-        _record_audit(request, response, app.state.audit)
+        _record_audit(request, response, app.state.audit, started)
         return response
 
     @app.exception_handler(ApiError)
@@ -104,6 +107,7 @@ def create_app(
         if identity is None:
             raise ApiError(401, "AUTHENTICATION_FAILED", "bearer credential is invalid")
         request.state.agent_role = identity.role.value
+        request.state.principal_id = identity.principal_id
         return identity
 
     def authorize(permission: Permission) -> Callable[[Principal], Principal]:
@@ -295,6 +299,7 @@ def _record_audit(
     request: Request,
     response: JSONResponse,
     recorder: ApiAuditRecorder,
+    started: float,
 ) -> None:
     route = request.scope.get("route")
     route_path = getattr(route, "path", "/unmatched")
@@ -303,5 +308,23 @@ def _record_audit(
         method=request.method,
         route=route_path,
         status_code=response.status_code,
+        duration_ms=int(max(0, (monotonic() - started) * 1000)),
+        principal_id=getattr(request.state, "principal_id", None),
         agent_role=getattr(request.state, "agent_role", None),
     )
+
+
+async def _receive_bounded_body(request: Request, maximum: int) -> bytes | None:
+    chunks: list[bytes] = []
+    received = 0
+    while True:
+        message = await request.receive()
+        if message["type"] == "http.disconnect":
+            return b""
+        chunk = message.get("body", b"")
+        received += len(chunk)
+        if received > maximum:
+            return None
+        chunks.append(chunk)
+        if not message.get("more_body", False):
+            return b"".join(chunks)

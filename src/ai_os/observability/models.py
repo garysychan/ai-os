@@ -20,6 +20,7 @@ class RuntimeEventType(StrEnum):
 
 
 class RuntimeEventSource(StrEnum):
+    API = "API"
     CONTROLLER = "CONTROLLER"
     EXECUTION = "EXECUTION"
     ADAPTER = "ADAPTER"

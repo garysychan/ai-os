@@ -50,9 +50,9 @@ Notes:
 
 ## TASK-0001 — Establish Control Plane
 
-Priority: P0  
-Agent: Controller  
-Status: DONE  
+Priority: P0
+Agent: Controller
+Status: DONE
 Dependencies: None
 
 Description:
@@ -66,9 +66,9 @@ Acceptance Criteria:
 
 ## TASK-0002 — Validate Repository Architecture
 
-Priority: P0  
-Agent: Planner / Developer  
-Status: DONE  
+Priority: P0
+Agent: Planner / Developer
+Status: DONE
 Dependencies: TASK-0001
 
 Description:
@@ -96,9 +96,9 @@ Notes:
 
 ## TASK-0003 — Establish Codex Execution Workflow
 
-Priority: P1  
-Agent: Planner / Developer  
-Status: DONE  
+Priority: P1
+Agent: Planner / Developer
+Status: DONE
 Dependencies: TASK-0002
 
 Description:
@@ -128,9 +128,9 @@ Notes:
 
 ## TASK-0004 — Implement Agent Runtime Skeleton
 
-Priority: P1  
-Agent: Developer  
-Status: DONE  
+Priority: P1
+Agent: Developer
+Status: DONE
 Dependencies: TASK-0003, TASK-0005
 
 Description:
@@ -166,9 +166,9 @@ Notes:
 
 ## TASK-0005 — Implement Task Registry Integration
 
-Priority: P1  
-Agent: Developer  
-Status: DONE  
+Priority: P1
+Agent: Developer
+Status: DONE
 Dependencies: TASK-0007
 
 Description:
@@ -199,9 +199,9 @@ Notes:
 
 ## TASK-0006 — Establish Automated Quality Gates
 
-Priority: P1  
-Agent: Tester / Developer  
-Status: DONE  
+Priority: P1
+Agent: Tester / Developer
+Status: DONE
 Dependencies: TASK-0004
 
 Description:
@@ -236,9 +236,9 @@ Notes:
 
 ## TASK-0007 — Control Plane Consistency Checker
 
-Priority: P2  
-Agent: Developer  
-Status: DONE  
+Priority: P2
+Agent: Developer
+Status: DONE
 Dependencies: TASK-0001
 
 Description:
@@ -270,9 +270,9 @@ Notes:
 
 ## TASK-0008 — AI OS MVP Validation
 
-Priority: P1  
-Agent: Reviewer  
-Status: DONE  
+Priority: P1
+Agent: Reviewer
+Status: DONE
 Dependencies: TASK-0004, TASK-0005, TASK-0006, TASK-0010, TASK-0011
 
 Description:
@@ -309,9 +309,9 @@ Notes:
 
 ## TASK-0009 — Enforce Main Branch Governance
 
-Priority: P0  
-Agent: Controller / Developer  
-Status: DONE  
+Priority: P0
+Agent: Controller / Developer
+Status: DONE
 Dependencies: TASK-0007
 
 Description:
@@ -344,8 +344,8 @@ Notes:
 
 ## TASK-0010 — Install Controller Orchestration Engine
 
-Priority: P1  
-Agent: Controller / Developer / Tester / Reviewer  
+Priority: P1
+Agent: Controller / Developer / Tester / Reviewer
 Status: DONE
 Dependencies: TASK-0004, TASK-0006
 
@@ -1390,7 +1390,7 @@ Notes:
 - Post-merge Main Run `35708944362` passed on Python 3.11 and Python 3.12.
 - TASK-0020 transitioned from `REVIEW` to `DONE`; CR-2026-017 closed as
   `CLOSED / COMPLETED`.
-  
+
 ## CR-2026-018 — Governed Runtime API and Service Boundary
 
 Change ID: CR-2026-018
@@ -1626,7 +1626,11 @@ Notes:
 - Local validation passed 301 tests and 7 subtests with at least 85% branch coverage. Python compile,
   Ruff, changed-file formatting, strict Mypy, Task Schema, distribution build and Control Plane
   checks passed; Control Plane remains `WARNING` only for pre-existing findings.
-  
+- Reviewer Fix Cycle Round 1 adds allowlisted execution projections, streaming request-size
+  enforcement, production service composition, secret-backed strong authentication, fail-closed
+  health behavior and persisted redacted API audit evidence. Whole-branch Reviewer revalidation,
+  Python 3.11/3.12 evidence and protected Pull Request governance remain pending.
+
 ## Task Change Rules
 
 1. Do not silently delete completed tasks.

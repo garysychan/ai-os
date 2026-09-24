@@ -1,7 +1,24 @@
+import asyncio
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import cast
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
+from ai_os.agents import AgentRole
+from ai_os.api import ApiConfig, create_app
+from ai_os.api.services import RuntimeApiServices
+from ai_os.execution import (
+    ExecutionEvent,
+    ExecutionEventType,
+    ExecutionSession,
+    StepResult,
+    StepStatus,
+)
+from ai_os.persistence import SQLiteRuntimeStore, StoreConfig
+
+TEST_TOKEN = "synthetic-execution-token-with-32-byte-minimum"
 
 
 def test_system_and_catalog_routes_are_versioned_and_bounded(
@@ -92,3 +109,127 @@ def test_actual_request_body_size_is_bounded(
 
     assert response.status_code == 413
     assert response.json()["error"]["code"] == "REQUEST_TOO_LARGE"
+
+
+def test_execution_projection_excludes_private_session_payloads(tmp_path: Path) -> None:
+    store = SQLiteRuntimeStore(StoreConfig(tmp_path / "runtime.db"))
+    store.initialize()
+    instant = datetime.now(UTC)
+    store.save_execution_session(
+        ExecutionSession(
+            execution_id="execution-sensitive",
+            plan_id="plan-1",
+            task_id="TASK-0021",
+            controller_session_id="controller-1",
+            started_at=instant,
+            updated_at=instant,
+            events=(
+                ExecutionEvent(
+                    1,
+                    "execution-sensitive",
+                    "TASK-0021",
+                    ExecutionEventType.SESSION_FINISHED,
+                    instant,
+                    "PRIVATE_EXCEPTION_VALUE",
+                    evidence=("PRIVATE_RAW_EVIDENCE",),
+                ),
+            ),
+            results=(
+                StepResult(
+                    "step-1",
+                    1,
+                    StepStatus.FAILED,
+                    "PRIVATE_RESULT_SUMMARY",
+                    outputs=(("private_output", "PRIVATE_OUTPUT_VALUE"),),
+                    errors=("PRIVATE_ERROR_VALUE",),
+                ),
+            ),
+            blocking_findings=("PRIVATE_FINDING_VALUE",),
+        )
+    )
+    config = ApiConfig(root=Path(__file__).resolve().parents[2])
+    services = RuntimeApiServices(config, execution_repository=store)
+    application = create_app(config, _authenticator(), services=services)
+    response = TestClient(application).get(
+        "/v1/executions/execution-sensitive",
+        headers={"Authorization": "Bearer " + TEST_TOKEN},
+    )
+
+    assert response.status_code == 200
+    body = response.text
+    assert "PRIVATE_" not in body
+    assert set(response.json()["data"]) == {
+        "execution_id",
+        "plan_id",
+        "task_id",
+        "status",
+        "started_at",
+        "updated_at",
+        "event_count",
+        "result_count",
+        "blocking_finding_count",
+    }
+
+
+def test_streaming_body_limit_handles_exact_and_falsified_lengths(
+    client: TestClient, auth_headers: dict[str, str]
+) -> None:
+    limit = client.app.state.config.max_request_bytes
+    exact = client.post(
+        "/v1/executions/validate",
+        headers={**auth_headers, "content-length": str(limit - 1)},
+        content=b"x" * limit,
+    )
+    oversized = client.post(
+        "/v1/executions/validate",
+        headers={**auth_headers, "content-length": str(limit)},
+        content=b"x" * (limit + 1),
+    )
+
+    assert exact.status_code != 413
+    assert oversized.status_code == 413
+
+
+def test_streaming_body_without_content_length_is_rejected(client: TestClient) -> None:
+    limit = client.app.state.config.max_request_bytes
+    sent: list[dict[str, object]] = []
+    chunks = iter((b"x" * limit, b"x"))
+
+    async def receive() -> dict[str, object]:
+        try:
+            chunk = next(chunks)
+        except StopIteration:
+            return {"type": "http.disconnect"}
+        return {"type": "http.request", "body": chunk, "more_body": chunk == b"x" * limit}
+
+    async def send(message: dict[str, object]) -> None:
+        sent.append(message)
+
+    scope = {
+        "type": "http",
+        "http_version": "1.1",
+        "method": "POST",
+        "scheme": "http",
+        "path": "/v1/executions/validate",
+        "raw_path": b"/v1/executions/validate",
+        "query_string": b"",
+        "headers": [(b"authorization", b"Bearer " + TEST_TOKEN.encode())],
+        "client": ("testclient", 50000),
+        "server": ("testserver", 80),
+        "root_path": "",
+    }
+    asyncio.run(client.app(scope, receive, send))
+
+    assert sent[0]["status"] == 413
+
+
+def _authenticator():
+    from ai_os.api import CredentialBinding, StaticBearerAuthenticator, digest_token
+
+    return StaticBearerAuthenticator(
+        (
+            CredentialBinding(
+                "test", digest_token(TEST_TOKEN), "test-principal", AgentRole.CONTROLLER
+            ),
+        )
+    )

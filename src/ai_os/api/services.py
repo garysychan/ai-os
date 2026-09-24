@@ -47,6 +47,7 @@ class RuntimeApiServices:
     execution_repository: ExecutionRepository | None = None
     observability: ObservabilityService | None = None
     monitoring: MonitoringService | None = None
+    workflow_registry_service: WorkflowRegistry | None = None
 
     def version(self) -> dict[str, object]:
         try:
@@ -119,10 +120,12 @@ class RuntimeApiServices:
         return WorkflowRegistry(core_workflows())
 
     def workflows(self) -> list[object]:
-        return [_serialize(item) for item in self.workflow_registry().list_definitions()]
+        registry = self.workflow_registry_service or self.workflow_registry()
+        return [_serialize(item) for item in registry.list_definitions()]
 
     def workflow(self, name: str, workflow_version: str) -> object:
-        return _serialize(self.workflow_registry().resolve(name, workflow_version))
+        registry = self.workflow_registry_service or self.workflow_registry()
+        return _serialize(registry.resolve(name, workflow_version))
 
     def validate_workflow(self, payload: WorkflowInput) -> object:
         definition = self._workflow_definition(payload)
@@ -221,7 +224,18 @@ class RuntimeApiServices:
     def execution(self, execution_id: str) -> object:
         if self.execution_repository is None:
             raise RuntimeError("execution repository is not configured")
-        return _serialize(self.execution_repository.get_execution_session(execution_id))
+        session = self.execution_repository.get_execution_session(execution_id)
+        return {
+            "execution_id": session.execution_id,
+            "plan_id": session.plan_id,
+            "task_id": session.task_id,
+            "status": session.outcome.value if session.outcome is not None else "RUNNING",
+            "started_at": session.started_at.isoformat(),
+            "updated_at": session.updated_at.isoformat(),
+            "event_count": len(session.events),
+            "result_count": len(session.results),
+            "blocking_finding_count": len(session.blocking_findings),
+        }
 
     def audit(self, role: AgentRole, *, limit: int, trace_id: str | None = None) -> object:
         if self.observability is None:
@@ -238,6 +252,7 @@ class RuntimeApiServices:
 
     def health(self, role: AgentRole) -> object:
         if self.monitoring is None:
-            return {"status": "AVAILABLE", "checks": []}
+            status = "UNAVAILABLE" if self.config.environment.value == "production" else "UNKNOWN"
+            return {"status": status, "reason_code": "MONITORING_UNAVAILABLE", "checks": []}
         context = MonitoringQueryContext(role, Permission.READ_CONTROL)
         return _serialize(self.monitoring.health(context=context))
