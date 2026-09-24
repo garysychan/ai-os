@@ -295,3 +295,22 @@ storage fail closed before a typed `RuntimeConfig` can reach a runtime component
 approved `env://` references; only the Controller with `coordinate` permission may resolve them
 through `SecretService`. Secret material has redacted string representations and must never enter
 configuration output, logs, runtime events, audit records, task records or repository files.
+
+## 18. Governed Runtime API and Service Boundary
+
+`src/ai_os/api/` provides a private-first, versioned `/v1` HTTP boundary for authorized read,
+validation and dry-run operations. It is a transport layer over existing governance, Workflow,
+Execution, persistence, observability and monitoring services; it is not a second Controller and
+has no execution, scheduling, Tool, Adapter or Control Plane mutation authority.
+
+Every request passes through strict schema and size validation, bearer authentication, server-side
+canonical Principal resolution, default-deny authorization, an application service, and bounded
+response mapping. Client-supplied roles and permissions have no authority. The service binds only
+to a loopback address, disables interactive documentation endpoints, applies bounded pagination
+and timeouts, and emits credential-free security evidence. Credentials, request payloads, secret
+values, stack traces, SQL details and filesystem paths must not enter responses or API evidence.
+
+HTTP routes do not directly access SQLite tables or secret providers. Optional execution, audit,
+trace, health and metrics views receive existing repository or service interfaces through explicit
+dependency injection. Validation and dry-run endpoints construct and validate canonical domain
+models but never call the Workflow or Execution engines.

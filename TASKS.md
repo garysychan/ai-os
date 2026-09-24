@@ -50,9 +50,9 @@ Notes:
 
 ## TASK-0001 — Establish Control Plane
 
-Priority: P0  
-Agent: Controller  
-Status: DONE  
+Priority: P0
+Agent: Controller
+Status: DONE
 Dependencies: None
 
 Description:
@@ -66,9 +66,9 @@ Acceptance Criteria:
 
 ## TASK-0002 — Validate Repository Architecture
 
-Priority: P0  
-Agent: Planner / Developer  
-Status: DONE  
+Priority: P0
+Agent: Planner / Developer
+Status: DONE
 Dependencies: TASK-0001
 
 Description:
@@ -96,9 +96,9 @@ Notes:
 
 ## TASK-0003 — Establish Codex Execution Workflow
 
-Priority: P1  
-Agent: Planner / Developer  
-Status: DONE  
+Priority: P1
+Agent: Planner / Developer
+Status: DONE
 Dependencies: TASK-0002
 
 Description:
@@ -128,9 +128,9 @@ Notes:
 
 ## TASK-0004 — Implement Agent Runtime Skeleton
 
-Priority: P1  
-Agent: Developer  
-Status: DONE  
+Priority: P1
+Agent: Developer
+Status: DONE
 Dependencies: TASK-0003, TASK-0005
 
 Description:
@@ -166,9 +166,9 @@ Notes:
 
 ## TASK-0005 — Implement Task Registry Integration
 
-Priority: P1  
-Agent: Developer  
-Status: DONE  
+Priority: P1
+Agent: Developer
+Status: DONE
 Dependencies: TASK-0007
 
 Description:
@@ -199,9 +199,9 @@ Notes:
 
 ## TASK-0006 — Establish Automated Quality Gates
 
-Priority: P1  
-Agent: Tester / Developer  
-Status: DONE  
+Priority: P1
+Agent: Tester / Developer
+Status: DONE
 Dependencies: TASK-0004
 
 Description:
@@ -236,9 +236,9 @@ Notes:
 
 ## TASK-0007 — Control Plane Consistency Checker
 
-Priority: P2  
-Agent: Developer  
-Status: DONE  
+Priority: P2
+Agent: Developer
+Status: DONE
 Dependencies: TASK-0001
 
 Description:
@@ -270,9 +270,9 @@ Notes:
 
 ## TASK-0008 — AI OS MVP Validation
 
-Priority: P1  
-Agent: Reviewer  
-Status: DONE  
+Priority: P1
+Agent: Reviewer
+Status: DONE
 Dependencies: TASK-0004, TASK-0005, TASK-0006, TASK-0010, TASK-0011
 
 Description:
@@ -309,9 +309,9 @@ Notes:
 
 ## TASK-0009 — Enforce Main Branch Governance
 
-Priority: P0  
-Agent: Controller / Developer  
-Status: DONE  
+Priority: P0
+Agent: Controller / Developer
+Status: DONE
 Dependencies: TASK-0007
 
 Description:
@@ -344,8 +344,8 @@ Notes:
 
 ## TASK-0010 — Install Controller Orchestration Engine
 
-Priority: P1  
-Agent: Controller / Developer / Tester / Reviewer  
+Priority: P1
+Agent: Controller / Developer / Tester / Reviewer
 Status: DONE
 Dependencies: TASK-0004, TASK-0006
 
@@ -1390,7 +1390,7 @@ Notes:
 - Post-merge Main Run `35708944362` passed on Python 3.11 and Python 3.12.
 - TASK-0020 transitioned from `REVIEW` to `DONE`; CR-2026-017 closed as
   `CLOSED / COMPLETED`.
-  
+
 ## CR-2026-018 — Governed Runtime API and Service Boundary
 
 Change ID: CR-2026-018
@@ -1402,7 +1402,7 @@ Classification: MAJOR — introduces a new authenticated service boundary over g
 capabilities.
 Approval Required: Explicit A2 Human Approval before task creation or implementation.
 Approval Evidence: Repository Owner issued `APPROVE CR-2026-018` on 2026-09-23.
-Status: APPROVED / PENDING GOVERNANCE MERGE
+Status: APPROVED / OPEN
 
 Reason:
 AI OS currently exposes governed runtime capabilities through Python APIs and CLI commands but
@@ -1530,6 +1530,109 @@ Notes:
 - Implementation must begin from authoritative `main` only after the governance merge.
 - Actual execution or mutation APIs require a separate Change Request.
 - Coding has not started.
+- The approved CR-2026-018 governance record was merged into authoritative `main`.
+- Main post-merge Control Plane Checks passed on Python 3.11 and Python 3.12.
+- TASK-0021 implementation begins only from the resulting authoritative `main`.
+
+## TASK-0021 — Implement Governed Runtime API and Service Boundary
+
+Priority: P1
+Agent: Controller / Planner / Developer / Tester / Reviewer / Fixer
+Status: REVIEW
+Dependencies: TASK-0005, TASK-0006, TASK-0010, TASK-0011, TASK-0012, TASK-0013,
+TASK-0014, TASK-0015, TASK-0017, TASK-0018, TASK-0019, TASK-0020
+
+Description:
+Install a private-first, versioned Runtime API and application-service boundary that exposes
+authorized read, validation and dry-run capabilities without bypassing existing Controller,
+authorization, persistence, redaction, audit or runtime governance.
+
+Acceptance Criteria:
+- [x] A versioned `/v1` Runtime API application exists.
+- [x] The service binds to a private or loopback interface by default.
+- [x] Health, version and bounded capability endpoints exist.
+- [x] Authentication resolves credentials to a server-controlled canonical Principal.
+- [x] Client-supplied roles, identities or permissions cannot grant authority.
+- [x] Missing, invalid or unsupported authentication fails closed.
+- [x] Authorization is default-deny and enforced before application-service access.
+- [x] Control Plane inspection and consistency-check endpoints are bounded and authorized.
+- [x] Task, Agent and Workflow inspection endpoints are bounded and authorized.
+- [x] Workflow validation reuses existing governed runtime validation.
+- [x] Execution-request validation reuses existing governed runtime validation.
+- [x] Dry-run operations cannot dispatch execution or cause external side effects.
+- [x] SQLite remains the authoritative runtime persistence boundary.
+- [x] HTTP routes cannot directly access SQLite tables, secret providers, scheduler mutation
+  functions, execution adapters or external providers.
+- [x] Request, response and error envelopes are explicit, immutable and versioned.
+- [x] Unknown fields and unsupported schema versions fail closed.
+- [x] Pagination, request-size limits, query bounds and processing timeouts are explicit.
+- [x] Arbitrary filesystem paths, URLs and provider endpoints are rejected.
+- [x] Secret values cannot appear in requests, responses, representations, logs, audit records,
+  traces or errors.
+- [x] Authentication credentials and authorization headers are redacted.
+- [x] Error responses cannot expose stack traces, SQL details, filesystem paths or private
+  runtime payloads.
+- [x] Security-relevant requests emit bounded and redacted audit evidence.
+- [x] Production configuration rejects absent or insecure authentication.
+- [x] Actual execution dispatch, Task mutation, Workflow mutation, Scheduler mutation, shell
+  execution, direct Tool invocation and direct Adapter invocation remain unavailable.
+- [x] Existing Python and CLI public APIs remain backward compatible.
+- [x] Positive, negative, authentication, authorization, redaction, bounds and dry-run tests exist.
+- [ ] Tests pass on Python 3.11 and Python 3.12.
+- [x] Coverage remains at or above the configured 80% threshold.
+- [x] Control Plane Consistency Check has no new blocking finding.
+- [X] Whole-branch Reviewer result is `APPROVE`.
+- [ ] Protected Pull Request governance passes before merge.
+
+Proposed Artifacts:
+- CR-2026-018
+- `feature/governed-runtime-api`
+- Proposed `src/ai_os/api/`
+- Proposed versioned API request, response and error models
+- Proposed authentication and canonical Principal boundary
+- Proposed authorization dependencies
+- Proposed application-service layer
+- Proposed read, validation and dry-run routes
+- Proposed API lifecycle integration
+- Proposed `tests/api/`
+- Proposed governed Runtime API documentation
+
+Risks:
+- The API could become a second Controller and bypass runtime governance.
+- Caller-controlled identity fields could enable privilege escalation.
+- Authentication material, secret references or private payloads could leak through transport,
+  logs, audit evidence or errors.
+- Dry-run behavior could diverge from actual runtime validation.
+- Unbounded requests or queries could exhaust runtime resources.
+- Arbitrary paths or URLs could introduce traversal or SSRF risks.
+- Process-local authentication state could behave incorrectly under multiple workers.
+- HTTP dependencies increase the security and maintenance surface.
+- Internal runtime models could accidentally become unstable public contracts.
+
+Notes:
+- Change ID: CR-2026-018.
+- Requester: Repository Owner.
+- Approval Evidence: Repository Owner issued `APPROVE CR-2026-018` on 2026-09-23.
+- CR Status: APPROVED / OPEN.
+- Classification: MAJOR authenticated Runtime service boundary.
+- Change Type: ARCHITECTURE / SECURITY / INTEGRATION.
+- Implementation is restricted to read, validation and dry-run operations.
+- Actual execution and mutation APIs require a separate approved Change Request.
+- TASK-0021 transitioned from `TODO` to `IN_PROGRESS` when the dedicated implementation branch
+  was created from authoritative `main`.
+- Runtime API Core installs a loopback-only FastAPI `/v1` boundary, server-side Principal mapping,
+  default-deny authorization, versioned envelopes, bounded request handling, application services,
+  read/validate/dry-run routes and credential-free bounded API audit evidence.
+- Local validation passed 301 tests and 7 subtests with at least 85% branch coverage. Python compile,
+  Ruff, changed-file formatting, strict Mypy, Task Schema, distribution build and Control Plane
+  checks passed; Control Plane remains `WARNING` only for pre-existing findings.
+- Reviewer Fix Cycle Round 1 adds allowlisted execution projections, streaming request-size
+  enforcement, production service composition, secret-backed strong authentication, fail-closed
+  health behavior and persisted redacted API audit evidence. Whole-branch Reviewer revalidation,
+  Python 3.11/3.12 evidence and protected Pull Request governance remain pending.
+- Whole-branch Reviewer Revalidation Round 2 returned `APPROVE` for fix commit
+  `27f9bea`; Python 3.11 and Python 3.12 checks passed with 307 tests and
+  85.53% branch coverage.
 
 ## Task Change Rules
 

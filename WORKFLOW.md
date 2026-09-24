@@ -346,3 +346,16 @@ last responsible execution boundary, the Controller requests one named secret th
 secret service. Authorization, provider lookup or value validation failure stops the operation;
 resolved material is never displayed or persisted and redaction occurs before observability output.
 
+## 16. Governed Runtime API Lifecycle
+
+The Runtime API accepts only versioned read, validation and dry-run requests. Authentication maps
+one bearer credential digest to a server-configured canonical Principal; request fields and headers
+cannot select an Agent role or grant permissions. Authorization is default-deny and completes
+before any application service or repository access.
+
+Read operations remain bounded projections of authoritative Control Plane and Runtime state.
+Validation constructs existing canonical domain models and applies their existing rules. Dry-run
+returns a proposed stage or step plan with `dispatched: false`; it cannot create sessions, write
+SQLite state, invoke Tools or Adapters, schedule jobs, resolve secrets or cause external effects.
+Every request produces bounded evidence containing only request identity, canonical route, method,
+status, outcome and optional authenticated Agent role.

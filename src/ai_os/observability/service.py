@@ -8,6 +8,7 @@ from typing import Protocol
 from uuid import uuid4
 
 from ai_os.adapters import AdapterAuditEvent
+from ai_os.agents import AgentRole
 from ai_os.controller import ControllerOutcome, TraceEvent
 from ai_os.execution import (
     ExecutionEvent,
@@ -48,6 +49,49 @@ class ObservabilityService:
     def record(self, event: RuntimeEvent) -> RuntimeEvent:
         sanitized = sanitize_event(event, allow_unsequenced=True)
         return self.repository.append_runtime_event(sanitized)
+
+    def record_api_event(
+        self,
+        *,
+        request_id: str,
+        timestamp: datetime,
+        method: str,
+        route: str,
+        status_code: int,
+        principal_id: str | None,
+        agent_role: AgentRole | None,
+        duration_ms: int,
+    ) -> RuntimeEvent:
+        outcome = (
+            "SUCCESS" if status_code < 400 else "DENIED" if status_code in {401, 403} else "FAILED"
+        )
+        return self.record(
+            RuntimeEvent(
+                event_id=f"api:{request_id}",
+                sequence=0,
+                timestamp=timestamp,
+                event_type=(
+                    RuntimeEventType.COMPLETED
+                    if status_code < 400
+                    else RuntimeEventType.DENIED
+                    if status_code in {401, 403}
+                    else RuntimeEventType.FAILED
+                ),
+                source=RuntimeEventSource.API,
+                task_id="TASK-0021",
+                trace_id=request_id,
+                summary=outcome,
+                session_id=principal_id,
+                agent_role=agent_role.value if agent_role is not None else None,
+                correlation=(
+                    ("method", method),
+                    ("route", route),
+                    ("status_code", str(status_code)),
+                    ("outcome", outcome),
+                    ("duration_ms", str(max(0, duration_ms))),
+                ),
+            )
+        )
 
     def get(self, event_id: str, *, context: AuditQueryContext) -> RuntimeEvent:
         authorize_query(context)

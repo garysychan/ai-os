@@ -25,6 +25,11 @@ _KEYS = (
 _SAFE_CORRELATION_PATTERNS = {
     "attempt": re.compile(r"^[1-9][0-9]{0,8}$"),
     "source_sequence": re.compile(r"^[1-9][0-9]{0,8}$"),
+    "method": re.compile(r"^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)$"),
+    "route": re.compile(r"^/[A-Za-z0-9._{}:/-]{1,199}$"),
+    "status_code": re.compile(r"^[1-5][0-9]{2}$"),
+    "outcome": re.compile(r"^[A-Z_]{1,32}$"),
+    "duration_ms": re.compile(r"^[0-9]{1,9}$"),
 }
 _SAFE_STAGES = frozenset(
     {stage.value for stage in ControllerStage}
