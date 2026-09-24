@@ -59,7 +59,7 @@ def test_control_plane_and_task_routes_reuse_authoritative_loader(
     assert status.status_code == 200
     assert "TASKS.md" in status.json()["data"]["documents"]
     assert task.status_code == 200
-    assert task.json()["data"]["status"] == "IN_PROGRESS"
+    assert task.json()["data"]["status"] == "REVIEW"
     assert tasks.status_code == 200
     assert len(tasks.json()["data"]) == 2
     assert tasks.json()["meta"]["total"] >= 21
