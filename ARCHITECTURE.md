@@ -254,7 +254,10 @@ Runtime event queries are explicitly bounded and may filter only declared indexe
 reconstruction is an ordered evidence view, not replay authority. Observability failures must not
 silently approve, repeat or alter runtime execution. Service and CLI inspection require an explicit
 canonical Agent role with `read_control`; the SQLite repository remains an internal persistence
-boundary protected by operating-system file permissions.
+boundary. On POSIX/Linux, database file permissions are configured and verified as `0o600`.
+Windows is supported for general AI OS usage, but equivalent SQLite file-permission isolation is
+not currently guaranteed; `chmod(0o600)` does not provide Windows ACL enforcement. Windows ACL
+implementation is outside the current scope.
 
 ## 15. Runtime Metrics and Health Monitoring
 

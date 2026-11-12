@@ -1,6 +1,7 @@
 """Persistent Runtime Store integration and failure-path tests."""
 
 import json
+import os
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
@@ -121,7 +122,8 @@ def test_initialize_status_and_deterministic_round_trip(tmp_path: pytest.TempPat
     status = store.initialize()
     assert status.initialized
     assert status.schema_version == CURRENT_SCHEMA_VERSION
-    assert database.stat().st_mode & 0o777 == 0o600
+    if os.name == "posix":
+        assert database.stat().st_mode & 0o777 == 0o600
 
     store.save_controller_session(controller_session())
     store.save_execution_bundle(execution_plan(), execution_session())
@@ -199,25 +201,43 @@ def test_atomic_bundle_rolls_back_and_audit_is_append_only(
         store.append_adapter_audit(audit_event())
 
 
-def test_path_policy_sequence_and_query_bounds(tmp_path: pytest.TempPathFactory) -> None:
+def test_path_policy_rejects_control_and_denied_paths(tmp_path: pytest.TempPathFactory) -> None:
     with pytest.raises(PersistenceConfigurationError):
         SQLiteRuntimeStore(StoreConfig(database=tmp_path / "TASKS.md"))
     denied = tmp_path / "denied.sqlite"
     with pytest.raises(PersistenceConfigurationError):
         SQLiteRuntimeStore(StoreConfig(database=denied, denied_paths=(denied,)))
+
+
+def test_path_policy_rejects_file_symlink(tmp_path: pytest.TempPathFactory) -> None:
     target = tmp_path / "target.sqlite"
     target.touch()
     symlink = tmp_path / "runtime-link.sqlite"
-    symlink.symlink_to(target)
+    try:
+        symlink.symlink_to(target)
+    except OSError as error:
+        if getattr(error, "winerror", None) == 1314:
+            pytest.skip("Windows symlink creation requires the SeCreateSymbolicLink privilege")
+        raise
     with pytest.raises(PersistenceConfigurationError):
         SQLiteRuntimeStore(StoreConfig(database=symlink))
+
+
+def test_path_policy_rejects_parent_directory_symlink(tmp_path: pytest.TempPathFactory) -> None:
     real_parent = tmp_path / "real-parent"
     real_parent.mkdir()
     linked_parent = tmp_path / "linked-parent"
-    linked_parent.symlink_to(real_parent, target_is_directory=True)
+    try:
+        linked_parent.symlink_to(real_parent, target_is_directory=True)
+    except OSError as error:
+        if getattr(error, "winerror", None) == 1314:
+            pytest.skip("Windows symlink creation requires the SeCreateSymbolicLink privilege")
+        raise
     with pytest.raises(PersistenceConfigurationError):
         SQLiteRuntimeStore(StoreConfig(database=linked_parent / "nested" / "runtime.sqlite"))
 
+
+def test_query_bounds_and_sequence_validation(tmp_path: pytest.TempPathFactory) -> None:
     store = SQLiteRuntimeStore(StoreConfig(database=tmp_path / "runtime.sqlite", max_query_limit=2))
     assert store.status().initialized is False
     store.initialize()

@@ -1390,6 +1390,18 @@ Notes:
 - Post-merge Main Run `35708944362` passed on Python 3.11 and Python 3.12.
 - TASK-0020 transitioned from `REVIEW` to `DONE`; CR-2026-017 closed as
   `CLOSED / COMPLETED`.
+- 2026-10-03 local follow-up: the requested implementation was already present in merged
+  commit `9b6d1e9`. Verification found host-dependent database-path validation on Windows.
+  The uncommitted fix rejects POSIX rooted paths, Windows rooted/drive-qualified paths and
+  parent traversal consistently; regression cases cover each form.
+- Follow-up validation on Windows/Python 3.14: all 27 configuration, secret and configuration
+  CLI tests passed. Full regression: 309 passed, 1 skipped, 4 failed (two unavailable symlink
+  privileges, one POSIX file-mode assertion and one monitoring probe timeout).
+  Control Plane Consistency Check returned `WARNING` with no blocking findings.
+- Follow-up limitations: Python 3.11/3.12, Ruff and pytest-cov are unavailable locally;
+  coverage and lint were not verified. This follow-up remains pending Reviewer approval
+  and supported-environment validation; the historical completion above covers the merged
+  implementation only. No commit or push was performed.
 
 ## CR-2026-018 — Governed Runtime API and Service Boundary
 
