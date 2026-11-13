@@ -59,10 +59,23 @@ def test_profile_mismatch_and_unsafe_production_storage_fail() -> None:
         load_config({"database_path": ":memory:"}, profile=EnvironmentProfile.PRODUCTION)
 
 
-def test_component_projection_revalidates_typed_configuration() -> None:
+@pytest.mark.parametrize(
+    "database_path",
+    [
+        "/tmp/outside.db",
+        "C:/outside.db",
+        "C:outside.db",
+        "\\\\server\\share\\outside.db",
+        "\\outside.db",
+        "../outside.db",
+        "data/../../outside.db",
+        "..\\outside.db",
+    ],
+)
+def test_component_projection_revalidates_typed_configuration(database_path: str) -> None:
     unsafe = RuntimeConfig(
         environment=EnvironmentProfile.PRODUCTION,
-        database_path="/tmp/outside.db",
+        database_path=database_path,
         execution_timeout_seconds=300,
         scheduler_lease_seconds=60,
         audit_retention_days=90,

@@ -129,7 +129,7 @@ class AdapterLayerTests(unittest.TestCase):
             with self.assertRaisesRegex(AdapterPolicyError, "write-capable"):
                 denied.execute(task(), invocation(target), clock=lambda: NOW)
 
-    def test_file_adapter_blocks_escape_symlink_sensitive_and_oversize(self) -> None:
+    def test_file_adapter_blocks_external_path(self) -> None:
         with TemporaryDirectory() as approved, TemporaryDirectory() as outside:
             root = Path(approved)
             external = Path(outside) / "external.txt"
@@ -139,16 +139,38 @@ class AdapterLayerTests(unittest.TestCase):
             with self.assertRaisesRegex(AdapterPolicyError, "escapes approved roots"):
                 service.execute(task(), invocation(external), clock=lambda: NOW)
 
+    def test_file_adapter_blocks_symlink_escape(self) -> None:
+        with TemporaryDirectory() as approved, TemporaryDirectory() as outside:
+            root = Path(approved)
+            external = Path(outside) / "external.txt"
+            external.write_text("outside", encoding="utf-8")
+            adapter = ReadOnlyFileAdapter((root,), max_bytes=4)
+            service = AdapterService(AdapterRegistry((adapter,)))
             link = root / "link.txt"
-            link.symlink_to(external)
+            try:
+                link.symlink_to(external)
+            except OSError as error:
+                if getattr(error, "winerror", None) == 1314:
+                    self.skipTest(
+                        "Windows symlink creation requires the SeCreateSymbolicLink privilege"
+                    )
+                raise
             with self.assertRaisesRegex(AdapterPolicyError, "escapes approved roots"):
                 service.execute(task(), invocation(link), clock=lambda: NOW)
 
+    def test_file_adapter_blocks_sensitive_file(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            service = AdapterService(AdapterRegistry((ReadOnlyFileAdapter((root,)),)))
             secret = root / ".env"
             secret.write_text("x", encoding="utf-8")
             with self.assertRaisesRegex(AdapterPolicyError, "sensitive"):
                 service.execute(task(), invocation(secret), clock=lambda: NOW)
 
+    def test_file_adapter_blocks_oversized_file(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            service = AdapterService(AdapterRegistry((ReadOnlyFileAdapter((root,), max_bytes=4),)))
             large = root / "large.txt"
             large.write_text("12345", encoding="utf-8")
             with self.assertRaisesRegex(AdapterPolicyError, "size limit"):

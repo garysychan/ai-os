@@ -1,6 +1,6 @@
 """Fail-closed configuration validation."""
 
-from pathlib import PurePath
+from pathlib import PurePosixPath, PureWindowsPath
 
 from ai_os.secrets import SecretError, SecretReference
 
@@ -15,7 +15,15 @@ def validate_config(config: RuntimeConfig) -> None:
         raise ConfigurationValidationError("database path is invalid")
     if config.environment is EnvironmentProfile.PRODUCTION and config.database_path == ":memory:":
         raise ConfigurationValidationError("production cannot use an in-memory database")
-    if PurePath(config.database_path).is_absolute():
+    posix_path = PurePosixPath(config.database_path)
+    windows_path = PureWindowsPath(config.database_path)
+    if (
+        posix_path.is_absolute()
+        or windows_path.drive
+        or windows_path.root
+        or ".." in posix_path.parts
+        or ".." in windows_path.parts
+    ):
         raise ConfigurationValidationError("database path must remain repository-relative")
     if not 1 <= config.execution_timeout_seconds <= 86_400:
         raise ConfigurationValidationError("execution timeout is outside configured bounds")
